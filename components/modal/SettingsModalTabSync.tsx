@@ -6,6 +6,7 @@ import { useValue } from '@legendapp/state/react'
 import { useQueryClient } from '@tanstack/react-query'
 import { auth$ } from '@/states/auth'
 import { isIos, isWeb, nIf } from '@/lib/utils'
+import { PRIVACY_URL } from '@/lib/help'
 import { activateLicense, claimAccount, deleteAccount, signIn, signOut, signUp } from '@/lib/supabase/auth'
 import { prepareIosPurchase, redeemLicense } from '@/lib/query'
 import { syncSupabase } from '@/lib/supabase/sync'
@@ -27,9 +28,9 @@ const inputCls =
   'mb-3 rounded border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-900 p-2 text-sm text-zinc-900 dark:text-zinc-100'
 const PLACEHOLDER_COLOR = '#71717a'
 const TERMS_OF_USE_URL = 'https://www.apple.com/legal/internet-services/itunes/dev/stdeula/'
-// TODO: sustituir por la política de privacidad de tu propio servicio. Ahora
-// mismo apunta a la de Nonbili, que NO es la tuya.
-const PRIVACY_POLICY_URL = 'https://inks.page/p/privacy'
+// La política de privacidad es la de TU servicio, no la del proyecto original:
+// la app manda datos a tu servidor y eso hay que decirlo con tus palabras.
+const PRIVACY_POLICY_URL = PRIVACY_URL
 
 type BusyAction = 'buy' | 'restore' | 'manage'
 

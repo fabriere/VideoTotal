@@ -1,5 +1,8 @@
 {
   "about": {
+    "sourceCode": "Source code",
+    "license": "Licence",
+    "licenseDetail": "AGPL-3.0 · based on NouTube",
     "help": "Help",
     "faq": "FAQ",
     "faqHint": "Answers to common questions",

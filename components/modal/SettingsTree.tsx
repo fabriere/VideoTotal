@@ -26,14 +26,21 @@ import { SettingsChangelogContent } from './SettingsModalTabChangelog'
 import { SettingsUserStylesContent } from './SettingsUserStylesContent'
 import { SettingsBlocklistContent } from './SettingsBlocklistContent'
 import { useTwColor } from '@/lib/theme'
-import { FAQ_URL } from '@/lib/help'
+import { DONATE_URL, FAQ_URL, SOURCE_URL } from '@/lib/help'
 
-const repo = 'https://github.com/nonbili/NouTube'
-const donateLinks = [
-  { label: 'GitHub Sponsors', detail: 'github.com/sponsors/rnons', url: 'https://github.com/sponsors/rnons' },
-  { label: 'Liberapay', detail: 'liberapay.com/rnons', url: 'https://liberapay.com/rnons' },
-  { label: 'PayPal', detail: 'paypal.me/rnons', url: 'https://paypal.me/rnons' },
-]
+/**
+ * El repositorio con el código fuente de ESTA versión.
+ *
+ * No es un adorno: la licencia AGPL-3.0 exige ofrecer el código a quien reciba
+ * la aplicación, y aquí es donde se le dice dónde encontrarlo.
+ */
+const repo = SOURCE_URL
+const repoLabel = SOURCE_URL.replace(/^https?:\/\//, '')
+
+/** Donaciones propias. Sin enlace configurado, la sección no se muestra. */
+const donateLinks = DONATE_URL
+  ? [{ label: 'Donaciones', detail: DONATE_URL.replace(/^https?:\/\//, ''), url: DONATE_URL }]
+  : []
 export const surfaceCls =
   'overflow-hidden rounded-[24px] bg-white dark:bg-zinc-900'
 export const sectionLabelCls = 'mb-2 px-1 text-[11px] uppercase tracking-[0.18em] text-zinc-600 dark:text-zinc-500'
@@ -390,7 +397,7 @@ export const SettingsTree = forwardRef<
           <View className="gap-6">
             <View className="rounded-[28px] bg-white dark:bg-zinc-900 px-5 py-5">
               <NouText className="text-[11px] uppercase tracking-[0.18em] text-zinc-600 dark:text-zinc-500">
-                NouTube
+                VideoTotal
               </NouText>
               <NouText className="mt-2 text-xl font-semibold tracking-tight">v{version}</NouText>
             </View>
@@ -426,23 +433,42 @@ export const SettingsTree = forwardRef<
 
             <SettingsSection label={t('about.code')}>
               <View className={surfaceCls}>
-                <SettingsExternalRow title="GitHub" detail="github.com/nonbili/NouTube" href={repo} icon="code" isLast />
+                <SettingsExternalRow
+                  title={t('about.sourceCode')}
+                  detail={repoLabel}
+                  href={repo}
+                  icon="code"
+                />
+                {/*
+                  La licencia del proyecto original exige mantener la atribución,
+                  así que esto no se puede quitar: es lo que hace que usar este
+                  código sea legal.
+                */}
+                <SettingsExternalRow
+                  title={t('about.license')}
+                  detail={t('about.licenseDetail')}
+                  href="https://github.com/nonbili/NouTube"
+                  icon="copyright"
+                  isLast
+                />
               </View>
             </SettingsSection>
 
-            <SettingsSection label={t('about.donate')}>
-              <View className={surfaceCls}>
-                {donateLinks.map((item, index) => (
-                  <SettingsExternalRow
-                    key={item.url}
-                    title={item.label}
-                    detail={item.detail}
-                    href={item.url}
-                    isLast={index === donateLinks.length - 1}
-                  />
-                ))}
-              </View>
-            </SettingsSection>
+            {donateLinks.length ? (
+              <SettingsSection label={t('about.donate')}>
+                <View className={surfaceCls}>
+                  {donateLinks.map((item, index) => (
+                    <SettingsExternalRow
+                      key={item.url}
+                      title={item.label}
+                      detail={item.detail}
+                      href={item.url}
+                      isLast={index === donateLinks.length - 1}
+                    />
+                  ))}
+                </View>
+              </SettingsSection>
+            ) : null}
           </View>
         )
 

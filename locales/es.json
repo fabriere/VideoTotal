@@ -1,5 +1,8 @@
 {
   "about": {
+    "sourceCode": "Código fuente",
+    "license": "Licencia",
+    "licenseDetail": "AGPL-3.0 · basado en NouTube",
     "label": "Acerca de",
     "code": "Código fuente",
     "donate": "Donar",
