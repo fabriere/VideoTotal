@@ -105,6 +105,7 @@ export const ToolsModal = () => {
       progressLine: '',
       errorMsg: '',
       savedPath: '',
+      updatedAt: Date.now(),
     })
 
     // The progress card sits above the format list, which can be long enough that the card is

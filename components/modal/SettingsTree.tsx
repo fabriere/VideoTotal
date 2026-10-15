@@ -410,17 +410,19 @@ export const SettingsTree = forwardRef<
               </SettingsSection>
             ) : null}
 
-            <SettingsSection label={t('about.help')}>
-              <View className={surfaceCls}>
-                <SettingsExternalRow
-                  title={t('about.faq')}
-                  detail={t('about.faqHint')}
-                  href={FAQ_URL}
-                  icon="help-outline"
-                  isLast
-                />
-              </View>
-            </SettingsSection>
+            {FAQ_URL ? (
+              <SettingsSection label={t('about.help')}>
+                <View className={surfaceCls}>
+                  <SettingsExternalRow
+                    title={t('about.faq')}
+                    detail={t('about.faqHint')}
+                    href={FAQ_URL}
+                    icon="help-outline"
+                    isLast
+                  />
+                </View>
+              </SettingsSection>
+            ) : null}
 
             <SettingsSection label={t('about.code')}>
               <View className={surfaceCls}>

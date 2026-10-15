@@ -1,5 +1,5 @@
-appId: jp.nonbili.noutube
-productName: NouTube
+appId: com.videototal.app
+productName: VideoTotal
 directories:
   buildResources: build
 files:
@@ -12,22 +12,19 @@ files:
   - '!changelogs/*'
 asarUnpack:
   - resources/**
+# The 'noutube' scheme is kept intentionally: it is the wire contract shared with
+# desktop/src/main/lib/deeplink.ts and app.config.ts. Rename all three together.
 protocols:
-  - name: NouTube
+  - name: VideoTotal
     schemes:
       - noutube
 win:
-  executableName: noutube
+  executableName: videototal
 nsis:
   artifactName: ${productName}-${version}-setup.${ext}
   shortcutName: ${productName}
   uninstallDisplayName: ${productName}
   createDesktopShortcut: always
-appx:
-  artifactName: ${productName}-${version}.${ext}
-  identityName: NonbiliInc.NouTube
-  publisher: CN=E9477937-876C-417D-81DD-D63DDBACDEC2
-  publisherDisplayName: Nonbili
 mac:
   entitlementsInherit: build/entitlements.mac.plist
   extendInfo:
@@ -36,20 +33,26 @@ mac:
 dmg:
   artifactName: ${productName}-${version}-${arch}.${ext}
 linux:
-  executableName: noutube
+  executableName: videototal
   executableArgs:
     - --ozone-platform=x11
   target:
     - AppImage
     - snap
-  maintainer: Nonbili Inc.
+  maintainer: VideoTotal
   category: Utility
 appImage:
   artifactName: ${productName}-${version}.${ext}
 snap:
-  artifactName: noutube_${version}_${arch}.${ext}
+  artifactName: videototal_${version}_${arch}.${ext}
 npmRebuild: false
-publish:
-  provider: github
-  owner: nonbili
-  repo: NouTube-Desktop
+# Use the Electron runtime already unpacked by the `electron` package instead of
+# letting electron-builder download the matching zip. This host denies
+# electron-builder's artifact download lock (EPERM on mkdir of
+# eb-dl-<hash>.lock.lock in the temp dir) and this option skips that path
+# entirely; the directory below is a complete Electron 43.4.1 win32-x64 dist.
+electronDist: C:/Users/Admin/Documents/deepseek-harness/default-workspace/NouTube/node_modules/electron/dist
+# No `publish` block on purpose. The upstream config published to
+# github:nonbili/NouTube-Desktop, which would make this build silently
+# auto-update itself into Nonbili's official release. Auto-update stays off
+# until an own release channel is configured.

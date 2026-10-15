@@ -1,4 +1,5 @@
-import { PostgrestError } from '@supabase/supabase-js'
+// Tipo local equivalente al error de PostgREST que devuelve el adaptador.
+type PostgrestError = { code?: string; message: string }
 import { auth$ } from '@/states/auth'
 import { createLogger } from '@/lib/log'
 import type { ResourceSyncMeta } from '@/states/sync-meta'

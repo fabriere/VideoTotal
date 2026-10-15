@@ -1,2 +1,17 @@
-export const FAQ_URL = 'https://oss.nonbili.jp/noutube/faq'
-export const SIGN_IN_FAQ_URL = `${FAQ_URL}#sign-in-problems`
+/**
+ * Enlaces de ayuda.
+ *
+ * Apunta a TU página de ayuda. Mientras esté vacío, los enlaces no se muestran.
+ *
+ * Antes apuntaban a `oss.nonbili.jp`, la web del proyecto original: no es tuya y
+ * además le enseña a tus usuarios de dónde viene la app. Rellena esto cuando
+ * tengas tu propia página y los tres enlaces (el aviso de Google, el de las
+ * cookies y el de Ajustes) aparecerán solos.
+ */
+export const SUPPORT_URL = ''
+
+/** Ancla dentro de tu página para los problemas al iniciar sesión. */
+export const SIGN_IN_FAQ_URL = SUPPORT_URL ? `${SUPPORT_URL}#sign-in-problems` : ''
+
+/** Página de preguntas frecuentes, para el menú de Ajustes. */
+export const FAQ_URL = SUPPORT_URL

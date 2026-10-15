@@ -2,12 +2,14 @@ import { syncState, type Observable } from '@legendapp/state'
 import { auth$ } from '@/states/auth'
 import { bookmarks$ } from '@/states/bookmarks'
 import { folders$ } from '@/states/folders'
+import { playlists$ } from '@/states/playlists'
 import { getSettingsSnapshot, settings$ } from '@/states/settings'
 import { getUserStylesSnapshot, userStyles$ } from '@/states/user-styles'
 import { createLogger } from '@/lib/log'
 import { feederLoop } from '../feeder'
 import { bookmarksSyncer } from './sync/bookmarks'
 import { foldersSyncer } from './sync/folders'
+import { playlistsSyncer } from './sync/playlists'
 import { settingsSyncer } from './sync/settings'
 import { userStylesSyncer } from './sync/user-styles'
 
@@ -32,6 +34,7 @@ export async function syncSupabase() {
   await Promise.all([
     bookmarksSyncer.syncNow(),
     foldersSyncer.syncNow(),
+    playlistsSyncer.syncNow(),
     settingsSyncer.syncNow(),
     userStylesSyncer.syncNow(),
   ])
@@ -97,5 +100,17 @@ folders$.folders.onChange(() => {
   foldersSyncer.markDirty()
   if (canSync()) {
     foldersSyncer.scheduleSync()
+  }
+})
+
+playlists$.lists.onChange(() => {
+  if (playlistsSyncer.isApplyingRemote() || !isHydrated(playlists$)) {
+    return
+  }
+
+  logger.log('detected local playlists change')
+  playlistsSyncer.markDirty()
+  if (canSync()) {
+    playlistsSyncer.scheduleSync()
   }
 })

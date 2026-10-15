@@ -1,12 +1,14 @@
 import { useEffect, useState } from 'react'
-import { Alert, View } from 'react-native'
+import { Alert, Pressable, TextInput, View } from 'react-native'
 import { NouText } from '../NouText'
 import { Image } from 'expo-image'
 import { useValue } from '@legendapp/state/react'
+import { useQueryClient } from '@tanstack/react-query'
 import { auth$ } from '@/states/auth'
 import { isIos, isWeb, nIf } from '@/lib/utils'
-import { openDeleteAccount, signOut } from '@/lib/supabase/auth'
-import { prepareIosPurchase } from '@/lib/query'
+import { activateLicense, claimAccount, deleteAccount, signIn, signOut, signUp } from '@/lib/supabase/auth'
+import { prepareIosPurchase, redeemLicense } from '@/lib/query'
+import { syncSupabase } from '@/lib/supabase/sync'
 import { deliverIosTransaction, IOS_SYNC_PRODUCT_ID } from '@/lib/ios-billing'
 import { useMe } from '@/lib/hooks/useMe'
 import NouBilling from '@/modules/nou-billing'
@@ -21,7 +23,12 @@ import { useTwColor } from '@/lib/theme'
 const surfaceCls =
   'overflow-hidden rounded-[24px] bg-white dark:bg-zinc-900'
 const sectionLabelCls = 'mb-2 px-1 text-[11px] uppercase tracking-[0.18em] text-zinc-600 dark:text-zinc-500'
+const inputCls =
+  'mb-3 rounded border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-900 p-2 text-sm text-zinc-900 dark:text-zinc-100'
+const PLACEHOLDER_COLOR = '#71717a'
 const TERMS_OF_USE_URL = 'https://www.apple.com/legal/internet-services/itunes/dev/stdeula/'
+// TODO: sustituir por la política de privacidad de tu propio servicio. Ahora
+// mismo apunta a la de Nonbili, que NO es la tuya.
 const PRIVACY_POLICY_URL = 'https://inks.page/p/privacy'
 
 type BusyAction = 'buy' | 'restore' | 'manage'
@@ -36,12 +43,369 @@ const SettingsBadge: React.FC<{ label: string }> = ({ label }) => {
 
 const getErrorMessage = (error: unknown) => (error instanceof Error ? error.message : String(error))
 
+/**
+ * Registro y acceso dentro de la propia app.
+ *
+ * Antes esto era un enlace que abría `noutube.inks.page/auth/app` en el
+ * navegador. Ahora se habla directamente con our servidor.
+ */
+const SyncAuthForm: React.FC = () => {
+  const queryClient = useQueryClient()
+  const [email, setEmail] = useState('')
+  const [password, setPassword] = useState('')
+  const [busy, setBusy] = useState<'in' | 'up' | null>(null)
+  const [error, setError] = useState<string>()
+
+  const submit = async (mode: 'in' | 'up') => {
+    setError(undefined)
+    setBusy(mode)
+    try {
+      if (mode === 'in') {
+        await signIn(email.trim(), password)
+      } else {
+        await signUp(email.trim(), password)
+      }
+      // El plan lo manda el servidor: hay que releerlo tras entrar.
+      await queryClient.invalidateQueries({ queryKey: ['me'] })
+    } catch (e) {
+      setError(getErrorMessage(e))
+    } finally {
+      setBusy(null)
+    }
+  }
+
+  const canSubmit = email.trim().length > 0 && password.length >= 8 && busy === null
+
+  return (
+    <View className={surfaceCls}>
+      <View className="px-5 py-5">
+        <NouText className="text-lg font-semibold">{t('sync.label')}</NouText>
+        <NouText className="mt-2 text-sm leading-6 text-zinc-600 dark:text-zinc-400">
+          {t('sync.signInHint')}
+        </NouText>
+
+        <View className="mt-5">
+          <NouText className="mb-1 text-sm font-semibold text-zinc-700 dark:text-zinc-300">
+            {t('sync.email')}
+          </NouText>
+          <TextInput
+            className={inputCls}
+            value={email}
+            onChangeText={setEmail}
+            placeholder="tu@correo.com"
+            placeholderTextColor={PLACEHOLDER_COLOR}
+            autoCapitalize="none"
+            autoCorrect={false}
+            keyboardType="email-address"
+            editable={busy === null}
+          />
+
+          <NouText className="mb-1 text-sm font-semibold text-zinc-700 dark:text-zinc-300">
+            {t('sync.password')}
+          </NouText>
+          <TextInput
+            className={inputCls}
+            value={password}
+            onChangeText={setPassword}
+            placeholder={t('sync.passwordHint')}
+            placeholderTextColor={PLACEHOLDER_COLOR}
+            secureTextEntry
+            autoCapitalize="none"
+            autoCorrect={false}
+            editable={busy === null}
+            onSubmitEditing={() => void submit('in')}
+          />
+
+          {nIf(error, <NouText className="mb-3 text-sm text-red-500">{error}</NouText>)}
+
+          <View className="gap-3">
+            <NouButton loading={busy === 'in'} disabled={!canSubmit} onPress={() => void submit('in')}>
+              {t('sync.signIn')}
+            </NouButton>
+            <NouButton variant="outline" loading={busy === 'up'} disabled={!canSubmit} onPress={() => void submit('up')}>
+              {t('sync.signUp')}
+            </NouButton>
+          </View>
+
+          <NouText className="mt-4 text-xs leading-5 text-zinc-500 dark:text-zinc-500">
+            {t('sync.signUpHint')}
+          </NouText>
+        </View>
+      </View>
+    </View>
+  )
+}
+
+/** Canje de una licencia. El plan lo aplica el servidor, no el cliente. */
+const RedeemForm: React.FC = () => {
+  const queryClient = useQueryClient()
+  const [code, setCode] = useState('')
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState<string>()
+  const [ok, setOk] = useState<string>()
+
+  const submit = async () => {
+    setError(undefined)
+    setOk(undefined)
+    setBusy(true)
+    try {
+      const me = await redeemLicense(code.trim())
+      setOk(t('sync.redeemOk', { plan: capitalize(me.plan), interpolation: { escapeValue: false } }))
+      setCode('')
+      await queryClient.invalidateQueries({ queryKey: ['me'] })
+    } catch (e) {
+      setError(getErrorMessage(e))
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  return (
+    <View className="mt-5">
+      <NouText className="mb-1 text-sm font-semibold text-zinc-700 dark:text-zinc-300">
+        {t('sync.redeemLabel')}
+      </NouText>
+      <TextInput
+        className={inputCls}
+        value={code}
+        onChangeText={setCode}
+        placeholder="VIDEOTOTAL-XXXX-XXXX"
+        placeholderTextColor={PLACEHOLDER_COLOR}
+        autoCapitalize="characters"
+        autoCorrect={false}
+        editable={!busy}
+        onSubmitEditing={() => void submit()}
+      />
+      {nIf(error, <NouText className="mb-3 text-sm text-red-500">{error}</NouText>)}
+      {nIf(ok, <NouText className="mb-3 text-sm text-emerald-600 dark:text-emerald-400">{ok}</NouText>)}
+      <NouButton loading={busy} disabled={busy || code.trim().length === 0} onPress={() => void submit()}>
+        {t('sync.redeem')}
+      </NouButton>
+      <NouText className="mt-3 text-xs leading-5 text-zinc-500 dark:text-zinc-500">{t('sync.redeemHint')}</NouText>
+    </View>
+  )
+}
+
+/**
+ * Activación por PIN: lo único que se pide es el código.
+ *
+ * Es la puerta de entrada normal y quita toda la fricción: la cuenta se crea
+ * sola, atada a este dispositivo, y la licencia la aplica el servidor. El correo
+ * y la contraseña quedan como algo opcional (ver ClaimForm) para quien quiera
+ * usar la cuenta en otro dispositivo.
+ */
+const ActivateForm: React.FC = () => {
+  const queryClient = useQueryClient()
+  const [code, setCode] = useState('')
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState<string>()
+  const [showAccount, setShowAccount] = useState(false)
+
+  const submit = async () => {
+    setError(undefined)
+    setBusy(true)
+    try {
+      await activateLicense(code.trim())
+      setCode('')
+      // El plan lo manda el servidor: hay que releerlo tras activar.
+      await queryClient.invalidateQueries({ queryKey: ['me'] })
+    } catch (e) {
+      setError(getErrorMessage(e))
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  return (
+    <View className="gap-4">
+      <View className={surfaceCls}>
+        <View className="px-5 py-5">
+          <NouText className="text-lg font-semibold">{t('sync.activateTitle')}</NouText>
+          <NouText className="mt-2 text-sm leading-6 text-zinc-600 dark:text-zinc-400">
+            {t('sync.activateHint')}
+          </NouText>
+
+          <View className="mt-5">
+            <NouText className="mb-1 text-sm font-semibold text-zinc-700 dark:text-zinc-300">
+              {t('sync.redeemLabel')}
+            </NouText>
+            <TextInput
+              className={inputCls}
+              value={code}
+              onChangeText={setCode}
+              placeholder="VIDEOTOTAL-XXXX-XXXX"
+              placeholderTextColor={PLACEHOLDER_COLOR}
+              autoCapitalize="characters"
+              autoCorrect={false}
+              editable={!busy}
+              onSubmitEditing={() => void submit()}
+            />
+            {nIf(error, <NouText className="mb-3 text-sm text-red-500">{error}</NouText>)}
+            <NouButton loading={busy} disabled={busy || code.trim().length === 0} onPress={() => void submit()}>
+              {t('sync.activate')}
+            </NouButton>
+            <NouText className="mt-3 text-xs leading-5 text-zinc-500 dark:text-zinc-500">
+              {t('sync.activateHint2')}
+            </NouText>
+
+            <Pressable onPress={() => setShowAccount((value) => !value)} className="mt-5">
+              <NouText className="text-xs text-zinc-500 underline dark:text-zinc-500">
+                {showAccount ? t('sync.hideAccount') : t('sync.haveAccount')}
+              </NouText>
+            </Pressable>
+          </View>
+        </View>
+      </View>
+      {nIf(showAccount, <SyncAuthForm />)}
+    </View>
+  )
+}
+
+/**
+ * Poner correo y contraseña a una cuenta activada con un código.
+ *
+ * Hasta que no se hace, esa cuenta vive sólo en este dispositivo: si se pierde
+ * el teléfono se pierde el acceso, y con él lo sincronizado.
+ */
+const ClaimForm: React.FC = () => {
+  const queryClient = useQueryClient()
+  const [email, setEmail] = useState('')
+  const [password, setPassword] = useState('')
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState<string>()
+  const [done, setDone] = useState(false)
+
+  const submit = async () => {
+    setError(undefined)
+    setBusy(true)
+    try {
+      await claimAccount(email.trim(), password)
+      setDone(true)
+      setEmail('')
+      setPassword('')
+      await queryClient.invalidateQueries({ queryKey: ['me'] })
+    } catch (e) {
+      setError(getErrorMessage(e))
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  const canSubmit = email.trim().length > 0 && password.length >= 8 && busy === false
+
+  return (
+    <View className={surfaceCls}>
+      <View className="px-5 py-5">
+        <NouText className="text-lg font-semibold">{t('sync.claimTitle')}</NouText>
+        <NouText className="mt-2 text-sm leading-6 text-zinc-600 dark:text-zinc-400">{t('sync.claimHint')}</NouText>
+
+        {done ? (
+          <NouText className="mt-4 text-sm text-emerald-600 dark:text-emerald-400">{t('sync.claimDone')}</NouText>
+        ) : (
+          <View className="mt-5">
+            <TextInput
+              className={inputCls}
+              value={email}
+              onChangeText={setEmail}
+              placeholder="tu@correo.com"
+              placeholderTextColor={PLACEHOLDER_COLOR}
+              autoCapitalize="none"
+              autoCorrect={false}
+              keyboardType="email-address"
+              editable={!busy}
+            />
+            <TextInput
+              className={inputCls}
+              value={password}
+              onChangeText={setPassword}
+              placeholder={t('sync.passwordHint')}
+              placeholderTextColor={PLACEHOLDER_COLOR}
+              secureTextEntry
+              autoCapitalize="none"
+              autoCorrect={false}
+              editable={!busy}
+              onSubmitEditing={() => void submit()}
+            />
+            {nIf(error, <NouText className="mb-3 text-sm text-red-500">{error}</NouText>)}
+            <NouButton loading={busy} disabled={!canSubmit} onPress={() => void submit()}>
+              {t('sync.claimSave')}
+            </NouButton>
+          </View>
+        )}
+      </View>
+    </View>
+  )
+}
+
+/**
+ * Sincronizar a mano.
+ *
+ * La app ya sincroniza sola cada 5 minutos y al volver a ella, pero esperar sin
+ * saber cuándo es incómodo: esto lo hace cuando el usuario quiere.
+ */
+const SyncNowSection: React.FC = () => {
+  const [busy, setBusy] = useState(false)
+  const [status, setStatus] = useState<'idle' | 'ok' | 'error'>('idle')
+  const [at, setAt] = useState<Date>()
+
+  const run = async () => {
+    setBusy(true)
+    setStatus('idle')
+    try {
+      await syncSupabase()
+      setStatus('ok')
+      setAt(new Date())
+    } catch {
+      setStatus('error')
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  // La hora se calcula AQUÍ, con su comprobación, y no dentro del JSX.
+  //
+  // El segundo argumento de nIf se evalúa siempre, aunque la condición sea falsa.
+  // Cuando esto era `nIf(status === 'ok' && at, ... toLocaleTimeString())`, en el
+  // primer render `at` aún no existía, la expresión se evaluaba igual y la app se
+  // cerraba al abrir esta pantalla.
+  const hora = at ? at.toLocaleTimeString() : ''
+
+  return (
+    <View className={surfaceCls}>
+      <View className="px-5 py-5">
+        <NouButton variant="outline" loading={busy} onPress={() => void run()}>
+          {t('sync.syncNow')}
+        </NouButton>
+        {nIf(
+          status === 'ok' && !!hora,
+          <NouText className="mt-3 text-xs text-emerald-600 dark:text-emerald-400">
+            {t('sync.syncedAt', { time: hora, interpolation: { escapeValue: false } })}
+          </NouText>,
+        )}
+        {nIf(status === 'error', <NouText className="mt-3 text-xs text-red-500">{t('sync.syncFailed')}</NouText>)}
+      </View>
+    </View>
+  )
+}
+
 export const SettingsModalTabSync = () => {
   const tw = useTwColor()
-  const { user, userEmail, plan, accessToken } = useValue(auth$)
+  const queryClient = useQueryClient()
+  const { user, userEmail, plan, planExpiresAt } = useValue(auth$)
   const { me } = useMe()
   const planLabel = plan ? capitalize(plan) : t('sync.freePlan')
-  const subscribed = Boolean(me?.plan && me.plan !== 'free')
+  // Se mira el estado de sesión, NO la consulta al servidor. La sesión ya trae el
+  // plan desde el primer momento; la consulta puede tardar en responder. Cuando
+  // esto miraba la consulta, el botón de sincronizar no aparecía hasta que
+  // llegara la respuesta, aunque el plan ya se viera como "Pro".
+  const subscribed = Boolean(plan && plan !== 'free')
+  const expiresAt = planExpiresAt ?? me?.expiresAt
+  // Igual que con la hora: se prepara aquí y no dentro del JSX, porque el segundo
+  // argumento de nIf se evalúa siempre. Con `expiresAt` sin definir, dentro del
+  // JSX se construiría una fecha inválida que luego se descartaría.
+  const fechaCaduca = expiresAt ? new Date(expiresAt) : undefined
+  const fechaTexto = fechaCaduca && !isNaN(fechaCaduca.getTime()) ? fechaCaduca.toLocaleDateString() : ''
+  const diasRestantes = fechaCaduca ? Math.max(0, Math.ceil((fechaCaduca.getTime() - Date.now()) / 86_400_000)) : 0
   const viaAppStore = me?.source === 'app_store'
   const [loadingProduct, setLoadingProduct] = useState(isIos)
   const [productPrice, setProductPrice] = useState<string>()
@@ -93,10 +457,8 @@ export const SettingsModalTabSync = () => {
     } catch (error) {
       const message = getErrorMessage(error)
       if (message.includes('Purchase pending approval')) {
-        // Ask to Buy: the approved transaction arrives via Transaction.updates.
         setNotice(t('sync.purchasePending'))
       } else if (!message.includes('Purchase cancelled')) {
-        // StoreKit reports a dismissed payment sheet as an error.
         setActionError(message)
       }
     } finally {
@@ -104,8 +466,6 @@ export const SettingsModalTabSync = () => {
     }
   }
 
-  // The subscription follows the NouTube account, not the Apple ID, so make
-  // the account it binds to explicit before StoreKit takes over.
   const confirmAccountBinding = () =>
     new Promise<boolean>((resolve) => {
       Alert.alert(t('sync.purchaseTitle'), t('sync.purchaseConfirm', { email: userEmail || user?.email }), [
@@ -143,13 +503,26 @@ export const SettingsModalTabSync = () => {
       await NouBilling.manageSubscriptions()
     })
 
-  const onDeleteAccount = async () => {
+  // Borrar la cuenta es destructivo e irreversible: se confirma antes.
+  const onDeleteAccount = () => {
     setActionError(undefined)
-    try {
-      await openDeleteAccount(accessToken)
-    } catch (error) {
-      setActionError(getErrorMessage(error))
-    }
+    Alert.alert(t('sync.deleteConfirmTitle'), t('sync.deleteConfirmBody'), [
+      { text: t('buttons.cancel'), style: 'cancel' },
+      {
+        text: t('sync.deleteAccount'),
+        style: 'destructive',
+        onPress: () => {
+          void (async () => {
+            try {
+              await deleteAccount()
+              await queryClient.invalidateQueries({ queryKey: ['me'] })
+            } catch (error) {
+              setActionError(getErrorMessage(error))
+            }
+          })()
+        },
+      },
+    ])
   }
 
   const accountMenuItems = [
@@ -166,23 +539,7 @@ export const SettingsModalTabSync = () => {
       <View className="gap-6">
         <View>
           <NouText className={sectionLabelCls}>{t('sync.label')}</NouText>
-          <View className={surfaceCls}>
-            <View className="px-5 py-5">
-              <NouText className="text-lg font-semibold">{t('sync.label')}</NouText>
-              <NouText className="mt-2 text-sm leading-6 text-zinc-600 dark:text-zinc-400">{t('sync.hint')}</NouText>
-              <View className="mt-5 items-start">
-                {/* Link renders a Text, so style it directly: a View nested in
-                    it gets clipped on iOS. */}
-                <NouLink
-                  className="overflow-hidden rounded-full bg-indigo-600 px-6 py-2 text-white dark:bg-indigo-500"
-                  href="https://noutube.inks.page/auth/app"
-                  target="_blank"
-                >
-                  Login NouTube
-                </NouLink>
-              </View>
-            </View>
-          </View>
+          <ActivateForm />
         </View>
       </View>
     )
@@ -213,6 +570,10 @@ export const SettingsModalTabSync = () => {
         </View>
       </View>
 
+      {nIf(!userEmail, <ClaimForm />)}
+
+      {nIf(subscribed, <SyncNowSection />)}
+
       <View>
         <NouText className={sectionLabelCls}>{t('sync.currentPlan')}</NouText>
         <View className={surfaceCls}>
@@ -221,6 +582,16 @@ export const SettingsModalTabSync = () => {
               <SettingsBadge label={planLabel} />
               {nIf(viaAppStore, <SettingsBadge label={t('sync.activeViaIos')} />)}
             </View>
+            {nIf(
+              !!fechaTexto,
+              <NouText className="mt-3 text-xs text-zinc-600 dark:text-zinc-500">
+                {t('sync.expiresOn', {
+                  date: fechaTexto,
+                  days: diasRestantes,
+                  interpolation: { escapeValue: false },
+                })}
+              </NouText>,
+            )}
             <NouText className="mt-4 text-sm leading-6 text-zinc-600 dark:text-zinc-400">{t('sync.hint')}</NouText>
             {nIf(
               iosStatusText,
@@ -286,17 +657,9 @@ export const SettingsModalTabSync = () => {
                 </View>
               </View>
             ) : (
-              <View className="mt-5">
-                {viaAppStore ? (
-                  <NouText className="text-sm text-zinc-600 dark:text-zinc-400">{t('sync.activeViaIos')}</NouText>
-                ) : (
-                  <NouLink href="https://noutube.inks.page/app">
-                    <View className="items-center rounded-full border border-zinc-300 bg-zinc-100 px-5 py-2.5 dark:border-zinc-700 dark:bg-zinc-950">
-                      <NouText className="text-sm text-zinc-900 dark:text-zinc-100">{t('sync.managePlan')}</NouText>
-                    </View>
-                  </NouLink>
-                )}
-              </View>
+              // Escritorio: la licencia se activa canjeando un código, que el
+              // servidor valida y aplica. No hay pasarela de pago en la app.
+              <RedeemForm />
             )}
           </View>
         </View>

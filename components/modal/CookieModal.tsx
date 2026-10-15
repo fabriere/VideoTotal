@@ -142,9 +142,11 @@ export const CookieModal = () => {
       <View className="p-5">
         <NouText className="text-lg font-semibold mb-4">{t('settings.injectCookieTitle')}</NouText>
         <NouText className="mb-4 text-gray-400 text-sm leading-5">{t('settings.injectCookieHint')}</NouText>
-        <NouLink href={SIGN_IN_FAQ_URL} className="mb-4 text-sm text-blue-600 dark:text-blue-400 underline">
-          {t('settings.cookieFaq')}
-        </NouLink>
+        {SIGN_IN_FAQ_URL ? (
+          <NouLink href={SIGN_IN_FAQ_URL} className="mb-4 text-sm text-blue-600 dark:text-blue-400 underline">
+            {t('settings.cookieFaq')}
+          </NouLink>
+        ) : null}
         <TextInput
           className="border border-gray-600 rounded mb-6 text-white p-2 text-sm"
           value={text}

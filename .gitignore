@@ -45,3 +45,12 @@ fastlane/README.md
 fastlane/report.xml
 fastlane/Preview.html
 fastlane/metadata/ios/en-US/release_notes.txt
+
+# Clave de firma y contrasenas: NUNCA al repositorio
+keystores/
+
+# Clave de firma y contrasenas: NUNCA al repositorio
+credentials.json
+
+# Salida de mis comprobaciones locales: nunca al repositorio
+.export-check/

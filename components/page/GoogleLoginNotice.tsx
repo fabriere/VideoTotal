@@ -53,9 +53,11 @@ function GoogleLoginBanner() {
         <NouButton size="1" onPress={() => ui$.cookieModalOpen.set(true)}>
           {t('settings.injectCookieAction')}
         </NouButton>
-        <NouLink href={SIGN_IN_FAQ_URL} className="text-sm text-blue-600 dark:text-blue-400 underline">
-          {t('settings.cookieFaq')}
-        </NouLink>
+        {SIGN_IN_FAQ_URL ? (
+          <NouLink href={SIGN_IN_FAQ_URL} className="text-sm text-blue-600 dark:text-blue-400 underline">
+            {t('settings.cookieFaq')}
+          </NouLink>
+        ) : null}
       </View>
     </View>
   )

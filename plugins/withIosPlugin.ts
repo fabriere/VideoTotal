@@ -1,4 +1,30 @@
-import { ConfigPlugin, withAppDelegate, withInfoPlist, withPodfile } from '@expo/config-plugins'
+import type { ConfigPlugin } from '@expo/config-plugins'
+import * as configPlugins from '@expo/config-plugins'
+/**
+ * Igual que en withAndroidPlugin: `expo prebuild` carga el plugin como
+ * CommonJS y `eas-cli` como ESM nativo, donde la detección estática de exports
+ * con nombre puede fallar. Se resuelven en tiempo de ejecución.
+ *
+ * En línea a propósito: ESM exige extensión explícita en imports relativos.
+ */
+function fromModule<T>(module: unknown, name: string): T {
+  const namespace: any = module
+  const holder = namespace && namespace[name] !== undefined ? namespace : (namespace?.default ?? namespace)
+  const value = holder?.[name]
+
+  if (value === undefined) {
+    throw new Error(
+      `El módulo no expone "${name}" ni en el namespace ni en su export por defecto. ` +
+        `Comprueba la versión de @expo/config-plugins.`,
+    )
+  }
+
+  return value as T
+}
+
+const withAppDelegate = fromModule<typeof configPlugins.withAppDelegate>(configPlugins, 'withAppDelegate')
+const withInfoPlist = fromModule<typeof configPlugins.withInfoPlist>(configPlugins, 'withInfoPlist')
+const withPodfile = fromModule<typeof configPlugins.withPodfile>(configPlugins, 'withPodfile')
 
 // Xcode 27 rejects deployment targets below 15.0, but some pods still declare
 // older ones (RNCAsyncStorage 13.4, RNSVG 12.4), which fails the archive.

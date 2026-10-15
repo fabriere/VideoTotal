@@ -1,63 +1,77 @@
-# <img src="desktop/icon.png" align="top" height="44"> NouTube
+# VideoTotal
 
-Android, iOS, and Desktop app for YouTube and YouTube Music.
+Aplicación de vídeo para **Android** y **escritorio**, creada a partir de
+[NouTube](https://github.com/nonbili/NouTube), del que es un **fork**.
 
-Install from F-Droid, or download APK from GitHub.
+> **VideoTotal es un fork de NouTube.** El código original es de Nonbili Inc. y se
+> distribuye bajo la licencia **AGPL-3.0** (ver [LICENSE](./LICENSE)). Este
+> repositorio publica el código completo de la versión modificada, tal y como esa
+> misma licencia exige. El README original se conserva en
+> [README-NouTube.md](./README-NouTube.md).
 
-[<img src="https://img.shields.io/badge/F--Droid-1976D2?style=for-the-badge&logo=f-droid"
-    alt="Get it on F-Droid"
-    height="80">](https://f-droid.org/packages/jp.nonbili.noutube)
-[<img src="https://img.shields.io/badge/GitHub%20Releases-100000?style=for-the-badge&logo=github"
-      alt="Get it on GitHub"
-      hspace="16"
-      height="50">](https://github.com/nonbili/NouTube/releases/latest)
-[<img src="https://img.shields.io/badge/TestFlight-0D96F6?style=for-the-badge&logo=appstore&logoColor=white"
-    alt="Join the iOS beta on TestFlight"
-    height="50">](https://testflight.apple.com/join/kkUdF2hV)
+## Qué es
 
-Find Linux, macOS, Windows versions in [NouTube-Desktop](https://github.com/nonbili/NouTube-Desktop).
+Un reproductor de YouTube para Android y escritorio, sin anuncios y con funciones
+que la aplicación oficial no tiene: descargas, reproducción con la pantalla
+apagada, cola de reproducción, listas y sincronización entre dispositivos.
 
-Or use the browser extension on Firefox and Chrome.
+## Qué añade este fork
 
-[<img src="https://img.shields.io/badge/Firefox%20Add--ons-FF7139?style=for-the-badge&logo=firefoxbrowser&logoColor=white"
-    alt="Get it on Firefox Add-ons"
-    height="50">](https://addons.mozilla.org/addon/noutube/)
-[<img src="https://img.shields.io/badge/Chrome%20Web%20Store-4285F4?style=for-the-badge&logo=googlechrome&logoColor=white"
-      alt="Get it on Chrome Web Store"
-      hspace="16"
-      height="50">](https://chromewebstore.google.com/detail/noutube/cpmippodfdmialcoaegbbmhpdamodoif)
+Sobre el proyecto original, VideoTotal incorpora:
 
-## Features
+- **Activación por PIN**: el acceso a la sincronización se activa con un código,
+  sin necesidad de crear una cuenta con correo y contraseña. Después, si se
+  quiere usar la misma cuenta en otro dispositivo, se le pueden añadir
+  credenciales.
+- **Servicio de sincronización propio**: API y base de datos propias, con
+  licencias, límite de dispositivos y caducidad de planes.
+- **Listas de reproducción** hechas con los vídeos descargados, que se reproducen
+  seguidas y se sincronizan entre dispositivos.
+- **Reproductor propio** para los ficheros descargados, sin salir de la
+  aplicación.
+- **Pantalla de descargas** con el estado de cada una y aviso cuando el fichero
+  ya no está en el teléfono.
+- **Sincronización al volver a la aplicación**, para no tener que esperar ni
+  cerrarla.
+- Identidad propia: nombre, icono y textos.
 
-- No ads
-- Plays in the background
-- Manage video/music library without login
-- Manage watch history without login
-- Download video
-- RSS feed reader for YouTube channels
-- Hide shorts
-- Live chat
-- Play original audio
-- Customize with CSS
+## Estructura
 
-## How it works
+| Carpeta | Qué contiene |
+| --- | --- |
+| `app/`, `components/`, `lib/`, `states/` | La aplicación (Expo / React Native) |
+| `desktop/` | La versión de escritorio (Electron) |
+| `extension/` | La extensión de navegador |
+| `modules/nou-tube-view/` | Módulo nativo del visor web |
+| `assets/` | Iconos e imágenes |
 
-- Wrap https://m.youtube.com and https://music.youtube.com in Android webview
-- Inject code to block ads
-- Hook playback controls and support playing in background
+El servidor de sincronización vive en un repositorio aparte.
 
-## Screenshots
+## Compilar
 
-<img src="metadata/en-US/images/phoneScreenshots/1.jpg" width="240" alt="youtube"> <img src="metadata/en-US/images/phoneScreenshots/2.jpg" width="240" alt="youtube-music"> <img src="metadata/en-US/images/phoneScreenshots/3.jpg" width="240" alt="music-library">
+Requisitos: [Bun](https://bun.sh) y, para Android, el SDK de Android o una cuenta
+de [EAS](https://expo.dev).
 
-## Contributing
+```sh
+bun install
 
-You can find [contributing instructions here](/CONTRIBUTING.md)
+# Aplicación de escritorio
+cd desktop && bun run build
 
-## Translation
+# Android (APK, con EAS)
+bunx eas build --profile preview --platform android
+```
 
-Translation is supported by [Weblate](https://hosted.weblate.org/projects/noutube).
+Para compilar firmando con tu propia clave, coloca el almacén en `keystores/` y
+crea un `credentials.json` en la raíz; ambos están excluidos del repositorio. El
+formato está descrito en la
+[documentación de Expo](https://docs.expo.dev/app-signing/local-credentials/).
 
-## Note
+## Licencia y atribución
 
-We're not affiliated with any .org websites.
+- **Licencia**: [AGPL-3.0](./LICENSE), la misma del proyecto original.
+- **Origen**: [NouTube](https://github.com/nonbili/NouTube), de Nonbili Inc.
+- **Autor de este fork**: Fabriere.
+
+Al usar, modificar o redistribuir este código debes mantener estos avisos y
+publicar el código fuente de tus versiones, tal y como exige la AGPL-3.0.

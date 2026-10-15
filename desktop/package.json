@@ -1,10 +1,10 @@
 {
   "name": "noutube-desktop",
-  "productName": "NouTube",
+  "productName": "VideoTotal",
   "version": "0.3.1",
-  "description": "YouTube and YouTube Music in a single app",
+  "description": "VideoTotal - YouTube and YouTube Music in a single app",
   "main": "./out/main/index.js",
-  "author": "Nonbili Inc.",
+  "author": "VideoTotal",
   "homepage": "https://github.com/nonbili/NouTube",
   "scripts": {
     "preinstall": "touch ../node_modules/noutube",

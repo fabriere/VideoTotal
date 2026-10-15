@@ -439,8 +439,12 @@ export const NouHeader: React.FC<{ getNoutube: () => any }> = ({ getNoutube }) =
             onPress={() => {
               if (pageType?.type === 'watch') {
                 ui$.toolsModalUrl.set(activePageUrl)
+                ui$.toolsModalOpen.set(true)
+              } else {
+                // Fuera de un vídeo no hay nada que descargar, así que el botón
+                // lleva a la biblioteca de descargas.
+                ui$.downloadsModalOpen.set(true)
               }
-              ui$.toolsModalOpen.set(true)
             }}
           />,
         )}
@@ -581,6 +585,14 @@ export const NouHeader: React.FC<{ getNoutube: () => any }> = ({ getNoutube }) =
                     systemImage: 'arrow.down.circle',
                     handler: () => {
                       ui$.toolsModalOpen.set(true)
+                    },
+                  },
+                  {
+                    label: t('menus.downloads', 'Downloads'),
+                    icon: <MaterialIcons name="video-library" size={18} color={headerControlColor} />,
+                    systemImage: 'arrow.down.circle.fill',
+                    handler: () => {
+                      ui$.downloadsModalOpen.set(true)
                     },
                   },
                 ]),

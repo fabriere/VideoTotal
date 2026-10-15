@@ -1,7 +1,17 @@
+/**
+ * Consultas de cuenta y plan contra la API propia de VideoTotal.
+ *
+ * Sustituye al servicio `a.inks.page` de Nonbili. Sigue devolviendo el mismo
+ * tipo `NoutubeEntitlement` para que los componentes que ya lo usan
+ * (`SettingsModalTabSync`, `MainPageContent`, `SettingsTree`) no cambien.
+ *
+ * El plan que llega aquí es el del SERVIDOR. El cliente nunca lo inventa ni lo
+ * cachea como verdad: si el servidor dice `free`, no hay sincronización.
+ */
+
 import { UseQueryOptions } from '@tanstack/react-query'
 import { auth$ } from '@/states/auth'
-
-const HOST = 'https://a.inks.page'
+import { API_BASE, ApiError, authApi } from '@/lib/videototal/api'
 
 export interface NoutubeIosEntitlement {
   status: string
@@ -13,23 +23,12 @@ export interface NoutubeIosEntitlement {
 
 export interface NoutubeEntitlement {
   plan: string
-  source: 'none' | 'stripe' | 'app_store'
+  source: 'none' | 'stripe' | 'app_store' | 'videototal'
   email?: string | null
+  expiresAt?: string | null
+  deviceLimit?: number
+  syncEnabled?: boolean
   ios?: NoutubeIosEntitlement | null
-}
-
-export interface PrepareIosPurchaseResponse {
-  appAccountToken: string
-  email: string
-  entitlement: NoutubeEntitlement
-}
-
-export interface SyncIosTransactionResponse {
-  entitlement: NoutubeEntitlement
-}
-
-export interface WebAuthLinkResponse {
-  token?: string | null
 }
 
 const defaultEntitlement: NoutubeEntitlement = {
@@ -37,64 +36,68 @@ const defaultEntitlement: NoutubeEntitlement = {
   source: 'none',
 }
 
-function getErrorMessage(payload: any, fallback?: string) {
-  return payload?.error?.json?.message || payload?.message || fallback || 'Request failed'
-}
-
-async function callNoutubeApi<T>(
-  path: string,
-  init?: RequestInit,
-  authorization = auth$.accessToken.get(),
-): Promise<T> {
-  const headers = new Headers(init?.headers)
-  if (authorization) {
-    headers.set('authorization', authorization)
-  }
-  const method = init?.method?.toUpperCase()
-  if ((init?.body || (method && method !== 'GET' && method !== 'HEAD')) && !headers.has('content-type')) {
-    headers.set('content-type', 'application/json')
-  }
-
-  const res = await fetch(`${HOST}/api/${path}`, {
-    ...init,
-    headers,
-  })
-
-  const rawText = await res.text()
-  const payload = (() => {
-    try {
-      return rawText ? JSON.parse(rawText) : null
-    } catch {
-      return null
-    }
-  })()
-  if (!res.ok || payload?.error) {
-    const fallback = rawText ? `HTTP ${res.status}: ${rawText.slice(0, 200)}` : `HTTP ${res.status}`
-    throw new Error(getErrorMessage(payload, fallback))
-  }
-  return payload?.result?.data as T
-}
-
 export const getMeQuery = (options?: Partial<UseQueryOptions<NoutubeEntitlement>>) => ({
   queryKey: ['me'],
-  queryFn: async () => {
+  queryFn: async (): Promise<NoutubeEntitlement> => {
     if (!auth$.accessToken.get()) {
       return defaultEntitlement
     }
-    return callNoutubeApi<NoutubeEntitlement>('noutube.me')
+    try {
+      const me = await authApi.me()
+      return {
+        plan: me.plan,
+        source: 'videototal',
+        email: me.email,
+        expiresAt: me.planExpiresAt,
+        deviceLimit: me.deviceLimit,
+        syncEnabled: me.syncEnabled,
+      }
+    } catch (e) {
+      // Sin licencia o sin sesión: la app sigue funcionando, simplemente no
+      // sincroniza. No es un error que deba romper la interfaz.
+      if (e instanceof ApiError && (e.status === 401 || e.status === 402)) {
+        return defaultEntitlement
+      }
+      throw e
+    }
   },
-  staleTime: 15 * 60 * 1000, // 15 minutes
+  staleTime: 15 * 60 * 1000,
   ...options,
 })
 
-export const fetchWebAuthLink = (accessToken: string) =>
-  callNoutubeApi<WebAuthLinkResponse>('users.link', undefined, accessToken)
+/** Canje de un código de licencia. Devuelve el plan ya actualizado. */
+export const redeemLicense = async (code: string): Promise<NoutubeEntitlement> => {
+  const me = await authApi.redeem(code)
+  return {
+    plan: me.plan,
+    source: 'videototal',
+    email: me.email,
+    expiresAt: me.planExpiresAt,
+    deviceLimit: me.deviceLimit,
+    syncEnabled: me.syncEnabled,
+  }
+}
 
-export const prepareIosPurchase = () =>
-  callNoutubeApi<PrepareIosPurchaseResponse>('noutube.prepareIosPurchase', { method: 'POST' })
+export interface WebAuthLinkResponse {
+  token?: string | null
+}
 
-export const syncIosTransaction = (signedTransactionInfo: string) =>
-  callNoutubeApi<SyncIosTransactionResponse>('noutube.syncIosTransaction', {
-    method: 'POST',
-    body: JSON.stringify({ signedTransactionInfo }),
-  })
+/**
+ * La compra desde la App Store no forma parte de esta distribución de
+ * escritorio. Se mantienen las funciones para no romper importaciones, pero
+ * fallan de forma explícita en lugar de simular un éxito.
+ */
+export const fetchWebAuthLink = async (_accessToken: string): Promise<WebAuthLinkResponse> => ({
+  token: null,
+})
+
+export const prepareIosPurchase = async () => {
+  throw new Error('La compra desde la App Store no está disponible en esta versión.')
+}
+
+export const syncIosTransaction = async (_signedTransactionInfo: string) => {
+  throw new Error('La compra desde la App Store no está disponible en esta versión.')
+}
+
+/** Utilidad para mostrar la URL configurada (diagnóstico en Ajustes). */
+export const apiBaseUrl = API_BASE

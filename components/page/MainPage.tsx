@@ -10,6 +10,8 @@ import { queryClient } from '@/lib/query/client'
 import { BookmarkModal } from '../modal/BookmarkModal'
 import { FolderModal } from '../modal/FolderModal'
 import { HistoryModal } from '../modal/HistoryModal'
+import { DownloadsModal } from '../modal/DownloadsModal'
+import { LocalPlayer } from '../player/LocalPlayer'
 import { LibraryModal } from '../modal/LibraryModal'
 import { QueueModal } from '../modal/QueueModal'
 import { SettingsModal } from '../modal/SettingsModal'
@@ -91,12 +93,18 @@ export const MainPage: React.FC<{ contentJs: string }> = ({ contentJs }) => {
   useEffect(() => {
     supabase.auth.onAuthStateChange((event, session) => {
       // console.log('onAuthStateChange', event, session)
+      // El plan y su caducidad viajan dentro de la sesión, así que se rellenan
+      // aquí: quedan disponibles en cuanto se restaura la sesión, sin esperar a
+      // ninguna consulta.
+      const meta = session?.user.user_metadata as { plan?: string; planExpiresAt?: string } | undefined
       auth$.assign({
         loaded: true,
         userId: session?.user.id,
         userEmail: session?.user.email,
         user: session?.user.user_metadata,
         accessToken: session?.access_token,
+        plan: meta?.plan,
+        planExpiresAt: meta?.planExpiresAt ?? undefined,
       })
       if (session && (event === 'INITIAL_SESSION' || event === 'SIGNED_IN')) {
         void reconcileIosTransactions()
@@ -114,6 +122,7 @@ export const MainPage: React.FC<{ contentJs: string }> = ({ contentJs }) => {
         !pictureInPicture,
         <>
           <LibraryModal />
+          <DownloadsModal />
           <FeedModal />
           <BookmarkModal />
           <MoveBookmarkModal />
@@ -134,6 +143,10 @@ export const MainPage: React.FC<{ contentJs: string }> = ({ contentJs }) => {
           <Toast />
         </>,
       )}
+      {/* El reproductor de los ficheros descargados va fuera del bloque de
+          arriba a propósito: tiene que seguir en pantalla aunque el vídeo esté
+          en ventana flotante. */}
+      <LocalPlayer />
     </QueryClientProvider>
   )
 }

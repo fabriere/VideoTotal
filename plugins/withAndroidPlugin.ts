@@ -1,5 +1,44 @@
-import { ConfigPlugin, withGradleProperties, withMainActivity } from '@expo/config-plugins'
-import { withAndroidManifest, withAppBuildGradle } from '@expo/config-plugins/build/plugins/android-plugins.js'
+import type { ConfigPlugin } from '@expo/config-plugins'
+import * as configPlugins from '@expo/config-plugins'
+import * as androidPlugins from '@expo/config-plugins/build/plugins/android-plugins.js'
+/**
+ * Estos plugins se cargan con dos runtimes distintos: `expo prebuild` los
+ * transpila a CommonJS, y `eas-cli` los ejecuta como ESM nativo de Node (Node
+ * >= 22.18 elimina los tipos por defecto). En ESM, la detección estática de
+ * exports con nombre de un módulo CommonJS puede fallar cuando el paquete los
+ * define con `Object.defineProperty` y getter, como hace @expo/config-plugins.
+ *
+ * Por eso se resuelven EN TIEMPO DE EJECUCIÓN: primero en el namespace y luego
+ * en `default`, que en la interposición de Node apunta al `module.exports` real.
+ *
+ * Va en línea y no en un fichero aparte a propósito: ESM exige extensión
+ * explícita en los imports relativos, y `./interop` rompería ese cargador.
+ */
+function fromModule<T>(module: unknown, name: string): T {
+  const namespace: any = module
+  const holder = namespace && namespace[name] !== undefined ? namespace : (namespace?.default ?? namespace)
+  const value = holder?.[name]
+
+  if (value === undefined) {
+    throw new Error(
+      `El módulo no expone "${name}" ni en el namespace ni en su export por defecto. ` +
+        `Comprueba la versión de @expo/config-plugins.`,
+    )
+  }
+
+  return value as T
+}
+
+const withGradleProperties = fromModule<typeof configPlugins.withGradleProperties>(
+  configPlugins,
+  'withGradleProperties',
+)
+const withMainActivity = fromModule<typeof configPlugins.withMainActivity>(configPlugins, 'withMainActivity')
+const withAndroidManifest = fromModule<typeof androidPlugins.withAndroidManifest>(
+  androidPlugins,
+  'withAndroidManifest',
+)
+const withAppBuildGradle = fromModule<typeof androidPlugins.withAppBuildGradle>(androidPlugins, 'withAppBuildGradle')
 
 // React Native seeds DisplayMetricsHolder from the *application* context
 // (ReactRootView.init, ReactHostImpl.onConfigurationChanged), which always

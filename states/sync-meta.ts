@@ -3,6 +3,7 @@ import { syncObservable } from '@legendapp/state/sync'
 import { ObservablePersistMMKV } from '@legendapp/state/persist-plugins/mmkv'
 import type { Bookmark } from './bookmarks'
 import type { Folder } from './folders'
+import type { Playlist } from './playlists'
 import type { SettingsSnapshot } from './settings'
 import type { UserStylesSnapshot } from '@/lib/user-styles'
 import { getIndexedDBPlugin } from './indexeddb'
@@ -25,6 +26,7 @@ export interface ResourceSyncMeta<T> {
 interface Store {
   bookmarks: ResourceSyncMeta<Bookmark[]>
   folders: ResourceSyncMeta<Folder[]>
+  playlists: ResourceSyncMeta<Playlist[]>
   settings: ResourceSyncMeta<SettingsSnapshot>
   userStyles: ResourceSyncMeta<UserStylesSnapshot>
 }
@@ -40,6 +42,7 @@ const emptyMeta = <T>(): ResourceSyncMeta<T> => ({
 export const syncMeta$ = observable<Store>({
   bookmarks: emptyMeta<Bookmark[]>(),
   folders: emptyMeta<Folder[]>(),
+  playlists: emptyMeta<Playlist[]>(),
   settings: emptyMeta<SettingsSnapshot>(),
   userStyles: emptyMeta<UserStylesSnapshot>(),
 })
@@ -47,6 +50,7 @@ export const syncMeta$ = observable<Store>({
 const normalizeSyncMeta = (data?: Partial<Store>): Store => ({
   bookmarks: { ...emptyMeta<Bookmark[]>(), ...data?.bookmarks },
   folders: { ...emptyMeta<Folder[]>(), ...data?.folders },
+  playlists: { ...emptyMeta<Playlist[]>(), ...data?.playlists },
   settings: { ...emptyMeta<SettingsSnapshot>(), ...data?.settings },
   userStyles: { ...emptyMeta<UserStylesSnapshot>(), ...data?.userStyles },
 })

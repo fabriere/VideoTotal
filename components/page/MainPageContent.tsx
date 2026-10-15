@@ -8,7 +8,7 @@ import { bookmarks$, newBookmark } from '@/states/bookmarks'
 import { createLogger } from '@/lib/log'
 import { EmbedVideoModal } from '@/components/modal/EmbedVideoModal'
 import NouTubeViewModule, { NouTubeView } from '@/modules/nou-tube-view'
-import { StyleSheet, View } from 'react-native'
+import { AppState, StyleSheet, View } from 'react-native'
 import { setPageUrl } from '@/lib/page'
 import { getNextQueueUrl, trackQueueEnded, trackQueuePlaying } from '@/lib/queue'
 import { getLastPlaying } from '@/lib/last-playing'
@@ -503,12 +503,14 @@ export const MainPageContent: React.FC<{ contentJs: string }> = ({ contentJs }) 
           downloads$[payload.url].assign({
             phase: 'error',
             errorMsg: messageKey ? t(messageKey) : detail || t('modals.downloadFailed'),
+            updatedAt: Date.now(),
           })
         } else {
           downloads$[payload.url].assign({
             progress: 100,
             savedPath: payload.filePath || '',
             phase: 'done',
+            updatedAt: Date.now(),
           })
         }
       }
@@ -600,6 +602,7 @@ export const MainPageContent: React.FC<{ contentJs: string }> = ({ contentJs }) 
 
   useEffect(() => {
     auth$.plan.set(me?.plan)
+    auth$.planExpiresAt.set(me?.expiresAt ?? undefined)
     const runSync = () => {
       void syncSupabase().catch((error) => {
         logger.error('syncSupabase failed', error)
@@ -612,7 +615,16 @@ export const MainPageContent: React.FC<{ contentJs: string }> = ({ contentJs }) 
         () => runSync(),
         5 * 60 * 1000, // 5 minutes
       )
-      return () => clearInterval(timer)
+      // Al volver a la app —cambiar de ventana en el escritorio, traerla al
+      // primer plano en el móvil— se sincroniza al momento. Esperar hasta cinco
+      // minutos para ver un cambio hecho en otro dispositivo se hace largo.
+      const subscription = AppState.addEventListener('change', (state) => {
+        if (state === 'active') runSync()
+      })
+      return () => {
+        clearInterval(timer)
+        subscription.remove()
+      }
     }
   }, [me?.plan, userId])
 

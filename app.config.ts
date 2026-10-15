@@ -15,19 +15,39 @@ const intentFilters = [
   },
 ]
 
+/**
+ * ¿Es una compilación de desarrollo?
+ *
+ * La versión de desarrollo pide el código a un servidor local en vez de llevarlo
+ * dentro, así que los cambios se ven en el teléfono en segundos. Para poder
+ * tenerla instalada A LA VEZ que la app de verdad, se le da otro identificador y
+ * otro nombre: así no se pisan la una a la otra.
+ */
+const isDev = process.env.APP_VARIANT === 'development'
+const appName = isDev ? 'VideoTotal Dev' : 'VideoTotal'
+const appId = isDev ? 'com.videototal.app.dev' : 'com.videototal.app'
+/**
+ * El enlace propio también se cambia en desarrollo.
+ *
+ * Las dos apps responderían al mismo `noutube://`, y Android preguntaría cuál
+ * abrir cada vez. Con enlaces distintos, cada una responde sólo a la suya.
+ */
+const appScheme = isDev ? 'noutube-dev' : 'noutube'
+
 module.exports = ({ config }: { config: ExpoConfig }) => {
   return {
-    name: 'NouTube',
-    slug: 'noutube',
+    name: appName,
+    slug: 'videototal',
     version,
     icon: './assets/images/icon.png',
-    scheme: 'noutube',
+    scheme: appScheme,
     userInterfaceStyle: 'automatic',
     newArchEnabled: true,
     ios: {
       supportsTablet: true,
-      bundleIdentifier: 'jp.nonbili.noutube',
-      appleTeamId: 'NXW8RMPV8L',
+      // Identificador propio. El appleTeamId original era el de Nonbili
+      // (NXW8RMPV8L) y no se puede usar: hay que eliminarlo o poner el tuyo.
+      bundleIdentifier: appId,
       buildNumber,
       infoPlist: {
         // The player keeps going with the screen off and on the lock screen.
@@ -39,12 +59,21 @@ module.exports = ({ config }: { config: ExpoConfig }) => {
       versionCode,
       permissions: ['RECORD_AUDIO', 'MODIFY_AUDIO_SETTINGS', 'POST_NOTIFICATIONS', 'WAKE_LOCK'],
       adaptiveIcon: {
+        // La capa frontal es el dibujo recortado, sin el marco blanco que traia
+        // el original, reducido para que el capibara quede en la zona que
+        // Android garantiza que se ve.
         foregroundImage: './assets/images/adaptive-icon.png',
-        monochromeImage: './assets/images/monochrome-icon.png',
-        backgroundColor: '#ffffff',
+        // Sin icono monocromo a proposito: Android 13+ lo usa para los iconos
+        // "tematicos" y necesita una silueta limpia del personaje. Sacarla de
+        // este dibujo no sale bien (el pelo naranja y el rosa del borde se
+        // confunden), asi que es mejor no darlo que darlo roto. El sistema
+        // simplemente muestra el icono normal.
+        // El rojo es el medido en el borde del propio dibujo, para que empalme
+        // sin que se note la union.
+        backgroundColor: '#DC070C',
       },
       predictiveBackGestureEnabled: false,
-      package: 'jp.nonbili.noutube',
+      package: appId,
       intentFilters,
     },
     web: {
@@ -73,6 +102,16 @@ module.exports = ({ config }: { config: ExpoConfig }) => {
       ],
       'expo-asset',
       'expo-font',
+      // Reproductor para los ficheros descargados. Se activan el audio en
+      // segundo plano y la ventana flotante, que es lo que se espera de una app
+      // de vídeo: seguir escuchando con la pantalla apagada.
+      [
+        'expo-video',
+        {
+          supportsBackgroundPlayback: true,
+          supportsPictureInPicture: true,
+        },
+      ],
       'expo-status-bar',
       'expo-image',
       [
@@ -95,6 +134,13 @@ module.exports = ({ config }: { config: ExpoConfig }) => {
       ],
       'expo-web-browser',
     ],
+    // `eas init` no puede escribir aquí por ser un config dinámico (una
+    // función), así que el identificador del proyecto se pone a mano.
+    extra: {
+      eas: {
+        projectId: 'f0a56a7e-6fb1-4e12-8284-a0a78ab994e0',
+      },
+    },
     experiments: {
       typedRoutes: true,
     },
