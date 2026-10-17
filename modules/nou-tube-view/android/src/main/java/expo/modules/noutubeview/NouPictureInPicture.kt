@@ -133,22 +133,20 @@ object NouPictureInPicture {
   }
 
   fun onUserLeaveHint(activity: Activity) {
-    if (!isSupported(activity) || activity.isInPictureInPictureMode || videoSize == null) {
+    if (!isSupported(activity) || activity.isInPictureInPictureMode) {
       return
     }
     setChromeHidden(true)
-    val size = videoSize ?: return
+    // Without PiP params the activity cannot be pinned at all: the system log
+    // shows pictureInPictureParams=null, because the page does not always report
+    // the video. Fall back to 16:9 so leaving the app still pins the window.
+    val size = videoSize ?: (16 to 9)
     // YouTube reads the outer window size to detect backgrounding, so the page
     // has to be patched before the window shrinks -- fire and forget, waiting
     // for the answer is what broke entry in the first place.
     view?.webView?.evaluateJavascript("window.NouTube?.preparePictureInPicture?.()", null)
-    // Android 12+ usually enters PiP by itself from the params above, with a
-    // smoother transition. But some ROMs (HONOR/MagicOS, for instance) never do
-    // it, and relying only on that left the app in the background with just the
-    // audio playing. Entering by hand here is harmless when the system already
-    // did it: the call throws if the activity is already pinned, and that is
-    // caught below.
     try {
+      activity.setPictureInPictureParams(paramsFor(size, false))
       activity.enterPictureInPictureMode(paramsFor(size, false))
     } catch (error: Exception) {
       Log.w(TAG, "Unable to enter picture-in-picture", error)
