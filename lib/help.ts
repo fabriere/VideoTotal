@@ -29,3 +29,12 @@ export const PRIVACY_URL = 'https://api-production-0cd81.up.railway.app/privacid
 
 /** Enlace de donaciones propio. Si está vacío, la sección no se muestra. */
 export const DONATE_URL = ''
+
+/**
+ * Tu WhatsApp, para que quien no tenga código pueda pedirte uno.
+ *
+ * El enlace va en formato internacional y sin símbolos, que es como lo necesita
+ * wa.me; el número se enseña tal y como se escribe aquí.
+ */
+export const WHATSAPP_NUMBER = '096 796 0787'
+export const WHATSAPP_URL = 'https://wa.me/593967960787'

@@ -1,4 +1,19 @@
 {
+  "gate": {
+    "intro": "Enter the code you were given to use the app.",
+    "expired": "Your licence has expired. Enter a new code to keep using the app.",
+    "codeLabel": "Licence code",
+    "activate": "Activate",
+    "trial": "The trial lasts 7 days and is activated with a code. If you don't have one, ask for it.",
+    "noCode": "No code? Message me on WhatsApp",
+    "loginIntro": "Sign in with your email and password to use your licence on this device.",
+    "email": "Email",
+    "password": "Password",
+    "enter": "Sign in",
+    "haveAccount": "Already have an account? Sign in",
+    "haveCode": "I have a licence code",
+    "activatedNoPlan": "The licence was activated but could not be read. Close the app and open it again."
+  },
   "about": {
     "sourceCode": "Source code",
     "license": "Licence",

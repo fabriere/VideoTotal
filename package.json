@@ -7,8 +7,8 @@
   "private": true,
   "license": "AGPL-3.0",
   "main": "index.js",
-  "version": "0.7.4",
-  "versionCode": 84,
+  "version": "0.7.8",
+  "versionCode": 88,
   "buildNumber": "5",
   "scripts": {
     "eas-build-pre-install": "bun link",

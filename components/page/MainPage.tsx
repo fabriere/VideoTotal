@@ -1,5 +1,7 @@
 import { auth$ } from '@/states/auth'
 import { MainPageContent } from './MainPageContent'
+import { LicenseGate } from '../LicenseGate'
+import { licenseState } from '@/lib/license'
 import { supabase } from '@/lib/supabase/client'
 import { listenIosTransactions, reconcileIosTransactions } from '@/lib/ios-billing'
 import { useEffect, useState } from 'react'
@@ -114,6 +116,20 @@ export const MainPage: React.FC<{ contentJs: string }> = ({ contentJs }) => {
     feederLoop()
     return listenIosTransactions()
   }, [])
+
+  // Sin licencia no se entra: se enseña la pantalla de activación y nada más.
+  // Se mira el estado que ya está guardado en el teléfono (plan y caducidad),
+  // así que funciona sin conexión y no deja fuera a quien ha pagado.
+  const { loaded, plan, planExpiresAt } = useValue(auth$)
+  const conLicencia = licenseState(loaded, plan, planExpiresAt) === 'active'
+
+  if (!conLicencia) {
+    return (
+      <QueryClientProvider client={queryClient}>
+        <LicenseGate />
+      </QueryClientProvider>
+    )
+  }
 
   return (
     <QueryClientProvider client={queryClient}>
