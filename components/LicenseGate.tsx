@@ -69,7 +69,9 @@ export const LicenseGate: React.FC = () => {
           : await signIn(email.trim(), password)
       const usuario = respuesta?.user ?? respuesta
       const planNuevo = usuario?.plan ?? usuario?.user_metadata?.plan
-      const caduca = usuario?.expiresAt ?? usuario?.user_metadata?.planExpiresAt
+      // `activate` devuelve un ApiUser: el campo es `planExpiresAt`, no `expiresAt`.
+      const caduca =
+        usuario?.planExpiresAt ?? usuario?.expiresAt ?? usuario?.user_metadata?.planExpiresAt
       if (planNuevo && planNuevo !== 'free') {
         auth$.assign({ loaded: true, plan: planNuevo, planExpiresAt: caduca ?? undefined })
       }
