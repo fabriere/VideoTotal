@@ -39,6 +39,9 @@ jobs:
           distribution: temurin
           java-version: '17'
 
+      - name: Link local package
+        run: bun link
+
       - name: Install dependencies
         run: bun install
 
