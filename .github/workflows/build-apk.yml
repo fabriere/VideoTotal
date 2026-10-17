@@ -57,6 +57,9 @@ jobs:
             yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --licenses || true
           fi
 
+      - name: Read app version
+        run: echo "APP_VERSION=$(node -p "require('./package.json').version")" >> $GITHUB_ENV
+
       - name: Assemble full release
         working-directory: android
         run: ./gradlew :app:assembleFullRelease --no-daemon
@@ -78,12 +81,12 @@ jobs:
             --ks-pass "env:VIDEOTOTAL_KEYSTORE_PASSWORD" \
             --key-pass "env:VIDEOTOTAL_KEY_PASSWORD" \
             --ks-key-alias "${{ secrets.VIDEOTOTAL_KEY_ALIAS }}" \
-            --out VideoTotal-0.7.8-arm64.apk \
+            --out "VideoTotal-${APP_VERSION}-arm64.apk" \
             "$UNSIGNED"
-          "$APKSIGNER" verify --print-certs VideoTotal-0.7.8-arm64.apk
+          "$APKSIGNER" verify --print-certs "VideoTotal-${APP_VERSION}-arm64.apk"
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: VideoTotal-0.7.8-arm64
-          path: VideoTotal-0.7.8-arm64.apk
+          name: VideoTotal-${{ env.APP_VERSION }}-arm64
+          path: VideoTotal-${{ env.APP_VERSION }}-arm64.apk
