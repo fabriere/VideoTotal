@@ -16,6 +16,7 @@ import { useValue } from '@legendapp/state/react'
 import { useQueryClient } from '@tanstack/react-query'
 import { Image } from 'expo-image'
 import { t } from 'i18next'
+import icono from '../assets/images/icon.png'
 import { useState } from 'react'
 import { ActivityIndicator, KeyboardAvoidingView, Linking, Platform, Pressable, ScrollView, TextInput, View } from 'react-native'
 import { NouText } from './NouText'
@@ -115,7 +116,7 @@ export const LicenseGate: React.FC = () => {
       >
       <View className="items-center">
         <Image
-          source={require('../assets/images/icon.png')}
+          source={icono}
           style={{ width: 96, height: 96, borderRadius: 22 }}
           contentFit="contain"
         />
