@@ -90,7 +90,6 @@ export const NouHeader: React.FC<{ getNoutube: () => any }> = ({ getNoutube }) =
   const showPlaybackSpeedControl = useValue(settings$.showPlaybackSpeedControl)
   const showPlaybackQualityControl = useValue(settings$.showPlaybackQualityControl)
   const showSleepTimerButtonInHeader = useValue(settings$.showSleepTimerButtonInHeader)
-  const showLibraryButtonInHeader = useValue(settings$.showLibraryButtonInHeader)
   const showStarButtonInHeader = useValue(settings$.showStarButtonInHeader)
   const { width, height: windowHeight } = useWindowDimensions()
   const headerHeight = useValue(ui$.headerHeight)
@@ -221,7 +220,7 @@ export const NouHeader: React.FC<{ getNoutube: () => any }> = ({ getNoutube }) =
   const showSleepTimerButton = sleepTimerSupported && (sleepTimerActive || showSleepTimerButtonInHeader)
   const showStarButton = Boolean(pageType?.canStar) && showStarButtonInHeader
   const leadingToolbarItemCount =
-    Number(showLibraryButtonInHeader) +
+    1 +
     Number(!isYTMusic && feedsEnabled) +
     Number(showHomeButtonInHeader) +
     Number(!isWeb && showBackButtonInHeader) +
@@ -237,6 +236,7 @@ export const NouHeader: React.FC<{ getNoutube: () => any }> = ({ getNoutube }) =
     Number(showSleepTimerButton) +
     Number(!isYTMusic && queueSize > 0) +
     Number(pageType?.type === 'watch' || hasDownloads) +
+    Number(!isIos) +
     Number(showPictureInPictureButton) +
     Number(showStarButton) +
     Number(pinnedScripts.length > 0)
@@ -278,14 +278,11 @@ export const NouHeader: React.FC<{ getNoutube: () => any }> = ({ getNoutube }) =
           className={clsx('min-w-0', isWeb && 'lg:w-full')}
           contentContainerClassName={clsx('flex-row', isWeb && 'lg:flex-col', compactToolbar ? 'gap-0' : 'gap-1')}
         >
-          {nIf(
-            showLibraryButtonInHeader,
-            <MaterialButton
-              color={headerControlColor}
-              name={isYTMusic ? 'library-music' : 'video-library'}
-              onPress={() => ui$.libraryModalOpen.set(true)}
-            />,
-          )}
+          <MaterialButton
+            color={headerControlColor}
+            name={isYTMusic ? 'library-music' : 'video-library'}
+            onPress={() => ui$.libraryModalOpen.set(true)}
+          />
           {nIf(
             !isYTMusic && feedsEnabled,
             <MaterialButton color={headerControlColor} name="rss-feed" onPress={() => ui$.feedModalOpen.set(true)} />,
@@ -432,7 +429,7 @@ export const NouHeader: React.FC<{ getNoutube: () => any }> = ({ getNoutube }) =
           />,
         )}
         {nIf(
-          !isIos && (pageType?.type === 'watch' || hasDownloads),
+          !isIos,
           <MaterialButton
             name="download"
             color={isDownloading ? tw('blue-400') : headerControlColor}
