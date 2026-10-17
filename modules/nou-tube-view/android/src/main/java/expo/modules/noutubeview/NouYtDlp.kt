@@ -90,6 +90,14 @@ internal class NouYtDlp(private val context: Context) {
     }.getOrNull()
   }
 
+  // YouTube blocks the default player client with "Please sign in" (bot check).
+  // Give yt-dlp a list of clients to try in order, so a blocked client falls
+  // through to the next one instead of failing. `tv`, `ios` and `android`
+  // usually provide stream URLs that do not need a PO token.
+  private fun addYoutubeClientFallback(request: YoutubeDLRequest) {
+    request.addOption("--extractor-args", "youtube:player_client=tv,ios,android,mweb,web_safari")
+  }
+
   fun listFormats(url: String, useCookies: Boolean): Map<String, Any> {
     ensureYoutubeDLInitialized()
 
@@ -99,6 +107,7 @@ internal class NouYtDlp(private val context: Context) {
     request.addOption("--no-playlist")
     request.addOption("-R", "1")
     request.addOption("--socket-timeout", "5")
+    addYoutubeClientFallback(request)
     cookiesFile?.let { request.addOption("--cookies", it.absolutePath) }
     NouProxy.ytDlpUrl()?.let { request.addOption("--proxy", it) }
     val response = try {
@@ -304,6 +313,7 @@ internal class NouYtDlp(private val context: Context) {
     // tellable apart instead of landing as "title", "title (1)", "title (2)" in Downloads.
     request.addOption("-o", "${tempDir.absolutePath}/%(title)s [%(format_id)s].%(ext)s")
     request.addOption("--no-playlist")
+    addYoutubeClientFallback(request)
     cookiesFile?.let { request.addOption("--cookies", it.absolutePath) }
     NouProxy.ytDlpUrl()?.let { request.addOption("--proxy", it) }
     // Exact-format-id picks (the full format list) can be VP9/AV1/Opus, which do not always
