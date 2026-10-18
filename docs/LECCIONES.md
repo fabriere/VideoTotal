@@ -171,3 +171,25 @@ archivos.
 **El escritorio: nunca `require` de imágenes, y quien lo abre es el usuario.**
 **La licencia: leer `planExpiresAt`, y perpetua = sin fecha = activa.**
 **Y no concluir nada sin una prueba en el dispositivo real.**
+
+---
+
+## 11. Ventana flotante (PiP): no funciona con WebView en Android
+
+Probado y descartado (2026-10-18). La ventana **se abre**, pero dentro **no se ve
+el video**: el WebView de Android no dibuja su superficie dentro de una ventana
+flotante (sale blanco y el video se pausa).
+
+Intentos que **no** funcionaron:
+- Entrar a mano en onUserLeaveHint (Android 12+).
+- Configurar PiP con 16:9 aunque la pagina no reporte el video.
+- Quitar la re-maquetacion nativa de la webview al entrar (0.7.14).
+
+**Consecuencia:** la ventana flotante se **quito** de Android (0.7.15). Si algun
+dia se quiere, hay que sacar el video a un reproductor **nativo** dentro del PiP;
+no basta con el WebView. En el escritorio no aplica: ahi usa el PiP de HTML5.
+
+Pista de diagnostico: si la ventana abre pero esta en blanco, mirar
+pictureInPictureParams en el log del sistema; si es null, la actividad no tiene
+configurado el PiP, y si esta configurado y sigue blanco, es la superficie del
+WebView.
