@@ -23,6 +23,7 @@ import { formatPlaybackRate } from '@/lib/playback-rate'
 import { formatPlaybackQuality } from '@/lib/playback-quality'
 import MaterialIcons from '@react-native-vector-icons/material-icons'
 import { Image } from 'expo-image'
+import { mainClient } from '@/lib/main-client'
 
 import { downloads$ } from '@/states/downloads'
 import { tabs$, type Tab } from '@/states/tabs'
@@ -495,6 +496,16 @@ export const NouHeader: React.FC<{ getNoutube: () => any }> = ({ getNoutube }) =
             isWeb ? <MaterialButton color={headerControlColor} name="more-vert" /> : isIos ? 'ellipsis' : 'filled.MoreVert'
           }
           items={[
+            ...(isWeb
+              ? [
+                  {
+                    label: t('menus.googleLogin', 'Iniciar sesión en Google'),
+                    icon: <MaterialIcons name="login" size={18} color={headerControlColor} />,
+                    systemImage: 'person.crop.circle.badge.checkmark',
+                    handler: () => void (mainClient as any).openLoginWindow?.(),
+                  },
+                ]
+              : []),
             {
               label: isYTMusic ? 'YouTube' : 'YouTube Music',
               icon: <MaterialIcons name={isYTMusic ? 'video-library' : 'library-music'} size={18} color={headerControlColor} />,
