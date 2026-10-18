@@ -198,7 +198,9 @@ const withPictureInPicture: ConfigPlugin = (config) => {
 }
 
 const withAndroidSigningConfig: ConfigPlugin = (config) => {
-  config = withPictureInPicture(config)
+  // La ventana flotante queda fuera a proposito: la ventana se abria pero el
+  // WebView no se dibuja dentro (sale en blanco), asi que anunciarla solo
+  // confunde. Ver docs/LECCIONES.md.
   config = withSecondaryDisplayMetricsFix(config)
   config = withDeepLinkIntentFix(config)
 
