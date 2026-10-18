@@ -173,11 +173,9 @@ object NouPictureInPicture {
     }
     active = inPictureInPicture
     setChromeHidden(inPictureInPicture)
-    if (inPictureInPicture) {
-      takeOverWindow(activity)
-    } else {
-      releaseWindow()
-    }
+    // No se toca el arbol de vistas aqui: re-maquetar la webview dentro de la
+    // ventana flotante dejaba el video en blanco y pausado. La pagina ya se
+    // encoge sola al video desde JS (setPictureInPicture).
     view?.webView?.evaluateJavascript(
       "window.NouTube?.setPictureInPicture?.($inPictureInPicture)?.catch?.(console.error)",
       null,
