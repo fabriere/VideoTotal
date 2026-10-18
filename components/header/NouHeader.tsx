@@ -433,16 +433,7 @@ export const NouHeader: React.FC<{ getNoutube: () => any }> = ({ getNoutube }) =
           <MaterialButton
             name="download"
             color={isDownloading ? tw('blue-400') : headerControlColor}
-            onPress={() => {
-              if (pageType?.type === 'watch') {
-                ui$.toolsModalUrl.set(activePageUrl)
-                ui$.toolsModalOpen.set(true)
-              } else {
-                // Fuera de un vídeo no hay nada que descargar, así que el botón
-                // lleva a la biblioteca de descargas.
-                ui$.downloadsModalOpen.set(true)
-              }
-            }}
+            onPress={() => ui$.downloadsModalOpen.set(true)}
           />,
         )}
         {nIf(
