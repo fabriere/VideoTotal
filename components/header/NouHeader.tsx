@@ -236,7 +236,7 @@ export const NouHeader: React.FC<{ getNoutube: () => any }> = ({ getNoutube }) =
     Number(showSleepTimerButton) +
     Number(!isYTMusic && queueSize > 0) +
     Number(pageType?.type === 'watch' || hasDownloads) +
-    Number(!isIos) +
+    Number(!isIos) * 2 +
     Number(showPictureInPictureButton) +
     Number(showStarButton) +
     Number(pinnedScripts.length > 0)
@@ -433,6 +433,21 @@ export const NouHeader: React.FC<{ getNoutube: () => any }> = ({ getNoutube }) =
           <MaterialButton
             name="download"
             color={isDownloading ? tw('blue-400') : headerControlColor}
+            onPress={() => {
+              if (pageType?.type === 'watch') {
+                ui$.toolsModalUrl.set(activePageUrl)
+                ui$.toolsModalOpen.set(true)
+              } else {
+                ui$.downloadsModalOpen.set(true)
+              }
+            }}
+          />,
+        )}
+        {nIf(
+          !isIos,
+          <MaterialButton
+            name="download-done"
+            color={headerControlColor}
             onPress={() => ui$.downloadsModalOpen.set(true)}
           />,
         )}
