@@ -1,5 +1,6 @@
 import { setInterceptionBlockAds, setInterceptionBlocklist, toggleInterception } from 'main/lib/intercept.js'
 import { openLoginWindow } from 'main/lib/login-window.js'
+import { signOutAll } from 'main/lib/sign-out.js'
 import { ensureYtDlp, supportsJsRuntimes, updateYtDlp } from 'main/lib/ytdlp.js'
 import { ensureFfmpeg, getFfmpegPath, ytDlpEnv, ytDlpRuntimeArgs } from 'main/lib/ffmpeg.js'
 import { existsSync as fileExists } from 'fs'
@@ -21,10 +22,12 @@ import fs from 'fs/promises'
 import path from 'path'
 
 const interfaces = {
-  clearData: () => {
-    session.fromPartition('persist:webview').clearData()
-    session.fromPartition('').clearData({ origins: ['https://music.youtube.com', 'https://www.youtube.com'] })
+  clearData: async () => {
+    await session.fromPartition('persist:webview').clearData()
+    await session.fromPartition('').clearData({ origins: ['https://music.youtube.com', 'https://www.youtube.com'] })
   },
+  // Cerrar sesión de verdad: borra las cookies de Google/YouTube (ver sign-out.ts).
+  signOutAll,
   fetchFeed: async (url: string) => {
     try {
       const controller = new AbortController()

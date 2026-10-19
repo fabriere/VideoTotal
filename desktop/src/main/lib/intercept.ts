@@ -1,4 +1,4 @@
-import { net, session } from 'electron'
+import { app, net, session, type WebContents } from 'electron'
 import {
   RE_INTERCEPT,
   transformBrowseResponse,
@@ -161,6 +161,11 @@ export function interceptHttpRequest() {
   ses.protocol.handle('https', async (req) => {
     // Keep signed media/CDN requests out of YouTube session rewriting.
     if (!isYouTubeHost(req.url)) {
+      // Se deja net.fetch (sesión por defecto) a propósito: la petición ya no
+      // puede ser la de Google, porque las navegaciones a accounts.google.com
+      // se cancelan en watchWebviewNavigations() y el login va en su ventana
+      // aparte, con la intercepción apagada. Cambiarlo a ses.fetch no arregla
+      // el inicio de sesión y sí altera el resto del tráfico.
       return net.fetch(req, {
         bypassCustomProtocolHandlers: true,
       })
@@ -235,4 +240,166 @@ export function toggleInterception(enabled: boolean) {
       ses.protocol.unhandle('https')
     }
   }
+}
+
+/**
+ * El inicio de sesión de Google nunca ocurre dentro de las pestañas.
+ *
+ * - El handler de https anterior lo rompe (las cookies de Google acaban en el
+ *   tarro equivocado: "401 ... formato incorrecto").
+ * - Google rechaza un Chromium embebido ("No puedes acceder").
+ * - Cambiar el user agent de la pestaña a mitad de la cadena de redirecciones
+ *   hace que Chromium recargue y el inicio de sesión se queda colgado.
+ *
+ * Por eso cualquier navegación de una pestaña a accounts.google.com se cancela
+ * y el login se abre en su propia ventana (login-window.ts), que es Firefox
+ * durante toda su vida y corre con la intercepción apagada.
+ */
+function isSignInUrl(url: string): boolean {
+  try {
+    return new URL(url).hostname === 'accounts.google.com'
+  } catch {
+    return false
+  }
+}
+
+let pendingSignIn = false
+let pendingSignOut = false
+
+// El "Salir" de YouTube (youtube.com/logout → accounts.google.com/Logout) y el
+// "Agregar cuenta" de Google (AddSession): ambos significan que viene otra
+// cuenta, así que antes se borra la memoria de Google de este navegador
+// (sign-out.ts).
+function isSignOutUrl(url: string): boolean {
+  try {
+    const { hostname, pathname } = new URL(url)
+    const path = pathname.toLowerCase()
+    if (hostname === 'accounts.google.com') {
+      return path.startsWith('/logout')
+    }
+    return (
+      (hostname === 'youtube.com' || hostname.endsWith('.youtube.com')) && (path === '/logout' || path.startsWith('/logout/'))
+    )
+  } catch {
+    return false
+  }
+}
+
+function isAddAccountUrl(url: string): boolean {
+  try {
+    const { hostname, pathname, search } = new URL(url)
+    return hostname === 'accounts.google.com' && /addsession/i.test(pathname + search)
+  } catch {
+    return false
+  }
+}
+
+function signOutLater(then?: () => void): void {
+  if (pendingSignOut) return
+  pendingSignOut = true
+  setTimeout(() => {
+    void import('./sign-out')
+      .then(({ signOutAll }) => signOutAll())
+      .catch((e) => console.error('Sign-out failed:', e))
+      .finally(() => {
+        pendingSignOut = false
+        then?.()
+      })
+  }, 0)
+}
+
+// Nunca detener ni arrancar navegaciones desde dentro de un evento de
+// navegación: Chromium tumba la app entera si se cancela una navegación que
+// todavía se está montando (la app se cerraba al pulsar "Acceder"). Solo los
+// eventos cancelables llaman a preventDefault; el resto se aplaza al siguiente
+// turno del bucle de eventos.
+function openSignInLater(url?: string): void {
+  if (pendingSignIn) return
+  pendingSignIn = true
+  setTimeout(() => {
+    pendingSignIn = false
+    void import('./login-window')
+      .then(({ openLoginWindow }) => openLoginWindow(url))
+      .catch((e) => console.error('Sign-in window failed:', e))
+  }, 0)
+}
+
+/**
+ * Lo mínimo que se usa de un evento de navegación de Electron: las versiones
+ * nuevas lo pasan como objeto (`event.url`, `event.isMainFrame`) y las viejas
+ * como argumentos sueltos, así que se aceptan las dos formas.
+ */
+type NavigationEventLike = {
+  url?: string
+  isMainFrame?: boolean
+  preventDefault?: () => void
+}
+
+function navigationDetails(
+  event: NavigationEventLike | undefined,
+  legacyUrl?: string,
+  legacyMainFrame?: boolean,
+): { url?: string; isMainFrame?: boolean } {
+  const url: string | undefined = event?.url ?? legacyUrl
+  const isMainFrame: boolean | undefined = event?.isMainFrame ?? legacyMainFrame
+  return { url, isMainFrame }
+}
+
+function watchWebview(contents: WebContents): void {
+  // Cancelable: la pestaña se queda donde estaba y se abre la ventana de login.
+  const onCancellable = (
+    event: NavigationEventLike,
+    legacyUrl?: string,
+    _inPlace?: boolean,
+    legacyMainFrame?: boolean,
+  ): void => {
+    const { url, isMainFrame } = navigationDetails(event, legacyUrl, legacyMainFrame)
+    if (!url || isMainFrame === false) return
+    if (isSignOutUrl(url)) {
+      event?.preventDefault?.()
+      signOutLater()
+      return
+    }
+    if (!isSignInUrl(url)) return
+    event?.preventDefault?.()
+    if (isAddAccountUrl(url)) {
+      signOutLater(() => openSignInLater())
+      return
+    }
+    openSignInLater(url)
+  }
+  contents.on('will-navigate', onCancellable)
+  contents.on('will-redirect', onCancellable)
+
+  // Lo que aun así acabe en Google dentro de una pestaña (URL escrita a mano,
+  // loadURL): ya cometida la navegación, se vuelve atrás y se abre la ventana.
+  contents.on('did-navigate', (_event, url) => {
+    if (isSignOutUrl(url)) {
+      signOutLater()
+      return
+    }
+    if (!isSignInUrl(url)) return
+    setTimeout(() => {
+      if (contents.isDestroyed()) return
+      if (contents.navigationHistory?.canGoBack?.()) {
+        contents.navigationHistory.goBack()
+      } else {
+        void contents.loadURL('https://www.youtube.com/')
+      }
+    }, 0)
+    openSignInLater(url)
+  })
+}
+
+let watchingWebviews = false
+
+/** Engancha la vigilancia a cada webview que se cree. Llamar una sola vez. */
+export function watchWebviewNavigations(): void {
+  if (watchingWebviews) return
+  watchingWebviews = true
+  app.on('web-contents-created', (_event, contents) => {
+    if (contents.getType() === 'webview') {
+      watchWebview(contents)
+    }
+  })
 }

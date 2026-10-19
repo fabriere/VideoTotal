@@ -1,11 +1,11 @@
-import { app, shell, BrowserWindow, screen } from 'electron'
+import { app, shell, BrowserWindow, screen, session } from 'electron'
 import { join } from 'path'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 import icon from '../../resources/icon.png?asset'
 import { setMainWindow } from './lib/main-window'
 import { bindDeeplink } from './lib/deeplink'
 import { genDesktopFile } from './lib/linux'
-import { interceptHttpRequest } from './lib/intercept'
+import { interceptHttpRequest, watchWebviewNavigations } from './lib/intercept'
 import { checkForUpdateOnStart } from './lib/auto-update'
 import { initMainChannel } from './ipc/main'
 import contextMenu from 'electron-context-menu'
@@ -14,6 +14,16 @@ import { isSupportedUrl, normalizeSupportedUrl } from '@/lib/supported-url'
 import { uiClient } from './ipc/ui'
 
 app.userAgentFallback = getUserAgent(process.platform)
+
+// En la version portable, el lanzador puede cambiar APPDATA a una carpeta
+// temporal; ahi se irian la sesion y los ajustes en cada apertura. Solo en ese
+// caso (build portable de Windows) se fija una carpeta fija del usuario.
+if (process.platform === 'win32' && process.env.PORTABLE_EXECUTABLE_DIR) {
+  app.setPath(
+    'userData',
+    join(process.env.USERPROFILE || app.getPath('home'), 'AppData', 'Roaming', 'VideoTotal'),
+  )
+}
 
 // YouTube wraps external links as /redirect?q=<target>; unwrap to the real target.
 function resolveTargetUrl(rawUrl: string): string {
@@ -160,6 +170,10 @@ app.whenReady().then(() => {
 
   interceptHttpRequest()
 
+  // Las pestañas nunca navegan a accounts.google.com: el login se abre en su
+  // propia ventana (ver watchWebviewNavigations en lib/intercept.ts).
+  watchWebviewNavigations()
+
   initMainChannel()
 
   // Default open or close DevTools by F12 in development
@@ -192,5 +206,18 @@ app.on('window-all-closed', () => {
 })
 
 bindDeeplink()
+
+// Google rechaza el inicio de sesion dentro de la webview (error 401) y ademas
+// detecta el navegador embebido, asi que el login NO se hace en la pestaña: se
+// cancela esa navegacion y se abre la ventana aparte, que se presenta como
+// Firefox. Todo eso vive en watchWebviewNavigations() (lib/intercept.ts) y
+// login-window.ts.
+
+// Las cookies se guardan de forma asincrona. Si la app se cierra justo despues
+// de iniciar sesion, sin este volcado se quedan en memoria y al abrirla otra vez
+// vuelve a pedir la cuenta.
+app.on('before-quit', () => {
+  void session.fromPartition('persist:webview').cookies.flushStore()
+})
 
 checkForUpdateOnStart()
