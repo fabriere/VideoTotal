@@ -1,4 +1,10 @@
+# Canal de actualizaciones para desarrollo.
+# Apuntaba a nonbili/NouTube-Desktop (el proyecto original): con eso, un build de
+# prueba podía actualizarse solo al NouTube oficial en vez de a VideoTotal.
+# Este archivo no entra en el paquete (ver electron-builder.yml → files), así que
+# solo afecta a `bun run dev`; el canal real de los usuarios lo define el bloque
+# `publish` de electron-builder.yml.
 provider: github
-owner: nonbili
-repo: NouTube-Desktop
-updaterCacheDirName: noutube-desktop-updater
+owner: fabriere
+repo: VideoTotal
+updaterCacheDirName: videototal-updater
