@@ -15,8 +15,8 @@ const errorLogger = createLogger('sync')
 interface Item {
   id: string
   json: { deleted?: boolean }
-  created_at: Date | string
-  updated_at: Date | string | null | undefined
+  created_at?: Date | string
+  updated_at?: Date | string | null | undefined
 }
 
 const getErrorMessage = (error: unknown) => (error instanceof Error ? error.message : String(error))

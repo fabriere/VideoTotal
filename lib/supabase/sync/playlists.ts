@@ -21,7 +21,7 @@ class PlaylistsSyncer extends BaseSyncer<Playlist> {
 
   getStore() {
     const { lists, updatedAt } = playlists$.get()
-    return { items: lists, updatedAt }
+    return { items: lists, updatedAt: updatedAt ?? new Date(0) }
   }
 
   setStore({ items, updatedAt }: { items: Playlist[]; updatedAt: Date }) {

@@ -28,7 +28,7 @@ export const SOURCE_URL = 'https://github.com/fabriere/VideoTotal'
 export const PRIVACY_URL = 'https://api-production-0cd81.up.railway.app/privacidad'
 
 /** Enlace de donaciones propio. Si está vacío, la sección no se muestra. */
-export const DONATE_URL = ''
+export const DONATE_URL: string = ''
 
 /**
  * Tu WhatsApp, para que quien no tenga código pueda pedirte uno.

@@ -29,8 +29,9 @@ export const LocalPlayer = () => {
   const insets = useSafeAreaInsets()
   const [showList, setShowList] = useState(false)
   const item = currentItem(state)
+  const savedPath = item?.savedPath
 
-  const player = useVideoPlayer(item ? toUri(item.savedPath) : null, (p) => {
+  const player = useVideoPlayer(savedPath ? toUri(savedPath) : null, (p) => {
     p.play()
   })
 
@@ -40,7 +41,7 @@ export const LocalPlayer = () => {
   // El `try` está porque esta llamada cambió de forma entre versiones de la
   // librería; si fallara, el vídeo se vería igualmente, sólo que sin avanzar.
   useEffect(() => {
-    if (!item) {
+    if (!item?.savedPath) {
       return
     }
     try {
