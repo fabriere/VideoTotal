@@ -430,6 +430,25 @@ export const SettingsPreferencesContent = () => {
         </SettingsSection>
       </View>
 
+      {/* La ventana flotante vive aqui y no en las preferencias de YouTube: es
+          una funcion de la app, y en la otra pantalla nadie la encontraba. */}
+      {isAndroid ? (
+        <View className="mt-8">
+          <SettingsSection label={t('settings.preferencesPlayback')}>
+            <View className={surfaceCls}>
+              <SettingsToggleRow
+                label={t('settings.pictureInPicture')}
+                description={t('settings.pictureInPictureHint')}
+                icon="picture-in-picture"
+                value={settings.pictureInPicture}
+                onPress={() => settings$.pictureInPicture.set(!settings.pictureInPicture)}
+                isLast
+              />
+            </View>
+          </SettingsSection>
+        </View>
+      ) : null}
+
     </View>
   )
 }
@@ -567,13 +586,6 @@ export const SettingsYouTubeContent = () => {
                   icon="picture-in-picture-alt"
                   value={settings.miniPlayer}
                   onPress={() => settings$.miniPlayer.set(!settings.miniPlayer)}
-                />
-                <SettingsToggleRow
-                  label={t('settings.pictureInPicture')}
-                  description={t('settings.pictureInPictureHint')}
-                  icon="picture-in-picture"
-                  value={settings.pictureInPicture}
-                  onPress={() => settings$.pictureInPicture.set(!settings.pictureInPicture)}
                 />
               </>
             ) : null}

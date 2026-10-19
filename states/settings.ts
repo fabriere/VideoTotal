@@ -191,7 +191,9 @@ export const normalizeSettings = <T extends Partial<SettingsSnapshot> | undefine
   data.miniPlayerPosition = getMiniPlayerPosition(data)
   delete (data as { miniPlayerCorner?: unknown }).miniPlayerCorner
   if (typeof data.pictureInPicture !== 'boolean') {
-    data.pictureInPicture = false
+    // Encendida por defecto: es una funcion de la app y, apagada, nadie la
+    // encontraba en los ajustes.
+    data.pictureInPicture = true
   }
   if (typeof data.proxyEnabled !== 'boolean') {
     data.proxyEnabled = false
@@ -306,7 +308,7 @@ export const settings$ = observable<Store>({
   replaceWatchNavigation: false,
   miniPlayer: false,
   miniPlayerPosition: { x: 1, y: 1 },
-  pictureInPicture: false,
+  pictureInPicture: true,
   preferH264: false,
   clickbaitThumbnail: 'default',
   playbackRate: 1,
