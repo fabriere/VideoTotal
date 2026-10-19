@@ -19,6 +19,9 @@ const RAW_BASE = API_BASE_FROM_ENV
 export const API_BASE = (RAW_BASE || 'http://127.0.0.1:8788').replace(/\/+$/, '')
 
 const TOKEN_KEY = 'videototal.session.token'
+// Copia de la sesión (token + plan + caducidad) para poder restaurarla en frío
+// sin red: la licencia debe comprobarse sin conexión, no depender de un /me.
+const SESSION_KEY = 'videototal.session.data'
 const DEVICE_KEY = 'videototal.device.id'
 
 // ---------------------------------------------------------------------------
@@ -191,10 +194,9 @@ export function getSession(): ApiSession | null {
 
 export function onAuthStateChange(callback: Listener): { data: { subscription: { unsubscribe: () => void } } } {
   listeners.add(callback)
-  // Igual que supabase-js: el primer aviso llega de forma asíncrona.
-  void Promise.resolve().then(() => {
-    if (listeners.has(callback)) callback('INITIAL_SESSION', currentSession)
-  })
+  // El aviso inicial lo emite `restore()` cuando termina la hidratación: así el
+  // estado de carga no se marca como terminado antes de saber si hay sesión, y
+  // a un cliente con licencia no le parpadea la pantalla de activación.
   return {
     data: {
       subscription: {
@@ -208,6 +210,7 @@ export function onAuthStateChange(callback: Listener): { data: { subscription: {
 
 function acceptSession(token: string, user: ApiUser, event: AuthEvent): ApiSession {
   writeStore(TOKEN_KEY, token)
+  persistSession(token, user)
   currentSession = toSession(token, user)
   emit(event)
   return currentSession
@@ -215,8 +218,49 @@ function acceptSession(token: string, user: ApiUser, event: AuthEvent): ApiSessi
 
 function clearSession(event: AuthEvent = 'SIGNED_OUT'): void {
   writeStore(TOKEN_KEY, '')
+  writeStore(SESSION_KEY, '')
   currentSession = null
   emit(event)
+}
+
+/** Guarda lo imprescindible para restaurar la licencia sin red. */
+function persistSession(token: string, user: ApiUser): void {
+  writeStore(
+    SESSION_KEY,
+    JSON.stringify({
+      token,
+      userId: user.id,
+      email: user.email,
+      plan: user.plan,
+      planExpiresAt: user.planExpiresAt,
+    }),
+  )
+}
+
+/** Lee la sesión guardada en el arranque anterior, si existe y tiene plan. */
+function readStoredSession(): ApiUser | null {
+  const raw = readStore(SESSION_KEY)
+  if (!raw) return null
+  try {
+    const data = JSON.parse(raw) as {
+      userId?: string
+      email?: string
+      plan?: string
+      planExpiresAt?: string | null
+    }
+    if (!data || !data.plan || !data.userId) return null
+    return {
+      id: data.userId,
+      email: data.email ?? '',
+      plan: data.plan,
+      planExpiresAt: data.planExpiresAt ?? null,
+      deviceLimit: 0,
+      devices: [],
+      syncEnabled: false,
+    }
+  } catch {
+    return null
+  }
 }
 
 // Si el servidor responde 401, la sesión ya no vale: se limpia sola.
@@ -285,11 +329,24 @@ export const authApi = {
    * devuelve es el de la cuenta recién creada.
    */
   async activate(code: string): Promise<ApiUser> {
-    const res = await request<AuthResponse>('/license/activate', {
-      method: 'POST',
-      body: { code, deviceId: deviceId(), name: deviceName() },
-      token: '',
-    })
+    const body = { code, deviceId: deviceId(), name: deviceName() }
+    const attempt = () =>
+      request<AuthResponse>('/license/activate', {
+        method: 'POST',
+        body,
+        token: '',
+      })
+    let res: AuthResponse
+    try {
+      res = await attempt()
+    } catch (e) {
+      // Sin red (status 0) puede que el servidor ya hubiera consumido el código
+      // justo antes de cortarse la respuesta. Se reintenta una sola vez: la
+      // activación es idempotente por dispositivo, así que el reintento devuelve
+      // la sesión de la cuenta que ya canjeó el código en vez de "agotado".
+      if (!(e instanceof ApiError) || e.status !== 0) throw e
+      res = await attempt()
+    }
     // El servidor ya registró el dispositivo durante la activación.
     acceptSession(res.access_token, res.user, 'SIGNED_IN')
     return res.user
@@ -331,22 +388,37 @@ export const authApi = {
   },
 
   /**
-   * Restaura la sesión guardada al arrancar. Si el token ya no vale, el
-   * servidor responde 401 y se limpia solo.
+   * Restaura la sesión guardada al arrancar.
+   *
+   * Primero se restaura en frío desde lo guardado (token + plan + caducidad),
+   * para que la licencia se compruebe sin conexión y la pantalla de activación
+   * no parpadee mientras el servidor responde. Después se refresca con /me; si
+   * el token ya no vale (401), se limpia solo.
    */
   async restore(): Promise<void> {
-    if (!readStore(TOKEN_KEY)) {
-      if (currentSession) clearSession('SIGNED_OUT')
+    const token = readStore(TOKEN_KEY)
+    if (!token) {
+      currentSession = null
+      emit('INITIAL_SESSION')
       return
     }
+
+    // Restauración en frío: el plan guardado entra al instante.
+    const saved = readStoredSession()
+    if (saved) {
+      currentSession = toSession(token, saved)
+      emit('INITIAL_SESSION')
+    }
+
     try {
       const user = await authApi.me()
-      acceptSession(readStore(TOKEN_KEY), user, 'SIGNED_IN')
+      acceptSession(token, user, 'SIGNED_IN')
     } catch (e) {
-      if (e instanceof ApiError && (e.status === 401 || e.status === 0)) {
-        // 401: token revocado. Sin red (0): se conserva y se reintentará.
-        if (e.status === 401) clearSession('SIGNED_OUT')
+      if (e instanceof ApiError && e.status === 401) {
+        // Token revocado: se limpia y se vuelve a la pantalla de licencia.
+        clearSession('SIGNED_OUT')
       }
+      // Sin red (0) u otro error: se conserva lo guardado y se reintentará.
     }
   },
 }
