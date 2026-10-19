@@ -174,22 +174,37 @@ archivos.
 
 ---
 
-## 11. Ventana flotante (PiP): no funciona con WebView en Android
+## 11. Ventana flotante (PiP): el WebView no sirve, un reproductor nativo sí
 
-Probado y descartado (2026-10-18). La ventana **se abre**, pero dentro **no se ve
-el video**: el WebView de Android no dibuja su superficie dentro de una ventana
-flotante (sale blanco y el video se pausa).
+Probado y descartado con WebView (2026-10-18). La ventana **se abre**, pero dentro
+**no se ve el video**: el WebView de Android no dibuja su superficie dentro de una
+ventana flotante (sale blanco y el video se pausa). Por eso se quitó en 0.7.15.
 
 Intentos que **no** funcionaron:
 - Entrar a mano en onUserLeaveHint (Android 12+).
 - Configurar PiP con 16:9 aunque la pagina no reporte el video.
 - Quitar la re-maquetacion nativa de la webview al entrar (0.7.14).
 
-**Consecuencia:** la ventana flotante se **quito** de Android (0.7.15). Si algun
-dia se quiere, hay que sacar el video a un reproductor **nativo** dentro del PiP;
-no basta con el WebView. En el escritorio no aplica: ahi usa el PiP de HTML5.
+**Solución (0.7.18):** el video del PiP lo pone un reproductor nativo
+(`NouPipPlayer.kt`, ExoPlayer/media3) que sí se dibuja en la ventana flotante. El
+WebView solo aporta las URLs del stream, que se leen de `streamingData` en la
+respuesta del propio reproductor de YouTube (`content/picture-in-picture.ts`) —
+ya descifradas y autorizadas por la sesión, sin extraer nada ni esperar.
+
+Puntos que hubo que resolver:
+- **403 del CDN**: las URLs de googlevideo están atadas al cliente; el
+  `DefaultHttpDataSource` necesita un User-Agent de navegador.
+- **Video sin audio**: los formatos "adaptativos" vienen separados; se usa
+  `MergingMediaSource(video, audio)`. Si existe el progresivo (≤720p), mejor: una
+  sola fuente.
+- **Posición**: el nativo entra al PiP sin poder preguntar (la actividad ya está
+  pausada), así que la página reporta la posición cada 5 s y, al salir, el nativo
+  devuelve la suya para que el WebView continúe ahí.
+- **Dos audios**: al entrar al PiP la página pausa su reproductor.
+- **configChanges**: sin `screenSize|smallestScreenSize|screenLayout|orientation`
+  el sistema recrea la actividad al entrar/salir y el reproductor se destruye.
 
 Pista de diagnostico: si la ventana abre pero esta en blanco, mirar
 pictureInPictureParams en el log del sistema; si es null, la actividad no tiene
 configurado el PiP, y si esta configurado y sigue blanco, es la superficie del
-WebView.
+WebView (por eso el reproductor nativo).
