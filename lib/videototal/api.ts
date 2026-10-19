@@ -263,6 +263,30 @@ function readStoredSession(): ApiUser | null {
   }
 }
 
+/**
+ * Sesión guardada (token + plan), de forma SÍNCRONA.
+ *
+ * En web/escritorio el almacenamiento es síncrono, así que se puede leer antes
+ * del primer render y rellenar el plan sin esperar a ningún aviso asíncrono.
+ * En móvil devuelve null hasta que `hydrateStorage()` termina; allí el aviso
+ * asíncrono sí llega antes de pintar.
+ */
+export function getStoredSession(): ApiUser | null {
+  return readStore(TOKEN_KEY) ? readStoredSession() : null
+}
+
+/**
+ * Token guardado, de forma síncrona.
+ *
+ * Hace falta en el arranque: `getMeQuery` devuelve el plan 'free' si
+ * `auth$.accessToken` está vacío, así que si el estado naciera sin token la
+ * consulta marcaría 'free' y el cliente con licencia vería la pantalla de
+ * activación en cada apertura.
+ */
+export function getStoredToken(): string {
+  return readStore(TOKEN_KEY)
+}
+
 // Si el servidor responde 401, la sesión ya no vale: se limpia sola.
 setUnauthorizedHandler(() => {
   if (currentSession) clearSession('SIGNED_OUT')

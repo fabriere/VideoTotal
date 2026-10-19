@@ -13,7 +13,7 @@
 ; de actualizaciones hay que decidir entre volver a NSIS o usar el updater propio.
 
 #define MyAppName "VideoTotal"
-#define MyAppVersion "0.3.11"
+#define MyAppVersion "0.3.12"
 #define MyAppPublisher "Fabricio Delgado"
 #define MyAppURL "https://github.com/fabriere/VideoTotal"
 #define MyAppExeName "videototal.exe"
