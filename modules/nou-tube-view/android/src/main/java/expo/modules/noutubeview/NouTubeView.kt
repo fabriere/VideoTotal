@@ -870,6 +870,30 @@ class NouTubeView(context: Context, appContext: AppContext) : ExpoView(context, 
     post { NouPictureInPicture.setVideo(this, width, height) }
   }
 
+  /**
+   * URLs directas del stream que la pagina esta reproduciendo, para que la
+   * ventana flotante tenga video de verdad (ver NouPipPlayer). Una URL vacia
+   * desarma el PiP: al salir de la app solo seguira el audio.
+   */
+  fun setPictureInPictureStream(
+    videoUrl: String?,
+    audioUrl: String?,
+    positionMs: Long,
+    width: Int,
+    height: Int,
+  ) {
+    post {
+      if (videoUrl.isNullOrEmpty()) {
+        // Sin URL: la pagina solo esta reportando la posicion de reproduccion.
+        NouPipPlayer.setPosition(positionMs)
+        return@post
+      }
+      NouPipPlayer.setStream(
+        NouPipPlayer.Stream(videoUrl, audioUrl?.takeIf { it.isNotEmpty() }, positionMs, width, height),
+      )
+    }
+  }
+
   private fun applyFullscreenOrientation(activity: Activity, orientation: Int) {
     activity.requestedOrientation = orientation
     // initService can run before Expo has an activity. Fullscreen orientation

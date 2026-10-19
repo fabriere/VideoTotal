@@ -1,4 +1,4 @@
-import { preparePictureInPicture, setPictureInPicture, watchPictureInPictureVideo } from './picture-in-picture'
+import { preparePictureInPicture, resumeFromPictureInPicture, setPictureInPicture, watchPictureInPictureVideo } from './picture-in-picture'
 import {
   hideShorts,
   showShorts,
@@ -235,6 +235,8 @@ export function initNouTube() {
     setBlocklist,
     preparePictureInPicture,
     setPictureInPicture,
+    // Vuelve del PiP nativo a la posicion donde iba el reproductor del sistema.
+    resumeFromPictureInPicture,
     shortsHidden: true,
     play: () => getPlayer()?.playVideo(),
     pause: () => getPlayer()?.pauseVideo(),

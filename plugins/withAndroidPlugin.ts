@@ -179,6 +179,15 @@ const withPictureInPicture: ConfigPlugin = (config) => {
     if (activity) {
       activity.$['android:supportsPictureInPicture'] = 'true'
       activity.$['android:resizeableActivity'] = 'true'
+      // Sin estos configChanges el sistema recrea la actividad al entrar y salir
+      // del PiP: el reproductor nativo se destruye y la ventana queda en negro.
+      const current = String(activity.$['android:configChanges'] || '')
+        .split('|')
+        .filter(Boolean)
+      for (const change of ['screenSize', 'smallestScreenSize', 'screenLayout', 'orientation']) {
+        if (!current.includes(change)) current.push(change)
+      }
+      activity.$['android:configChanges'] = current.join('|')
     }
     return config
   })
@@ -198,9 +207,11 @@ const withPictureInPicture: ConfigPlugin = (config) => {
 }
 
 const withAndroidSigningConfig: ConfigPlugin = (config) => {
-  // La ventana flotante queda fuera a proposito: la ventana se abria pero el
-  // WebView no se dibuja dentro (sale en blanco), asi que anunciarla solo
-  // confunde. Ver docs/LECCIONES.md.
+  // La ventana flotante vuelve a estar activa (0.7.18): el motivo por el que se
+  // quito era que el WebView no dibuja su superficie dentro del PiP y la ventana
+  // salia en blanco. Ahora el video lo pone un reproductor nativo (NouPipPlayer)
+  // con las URLs que entrega la propia pagina; el WebView solo las aporta.
+  config = withPictureInPicture(config)
   config = withSecondaryDisplayMetricsFix(config)
   config = withDeepLinkIntentFix(config)
 

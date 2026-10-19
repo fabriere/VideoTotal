@@ -173,10 +173,38 @@ object NouPictureInPicture {
     }
     active = inPictureInPicture
     setChromeHidden(inPictureInPicture)
+    val webView = view?.webView
+
+    if (inPictureInPicture) {
+      // El video de la ventana flotante lo pone ExoPlayer (NouPipPlayer): el
+      // WebView no dibuja su superficie dentro del PiP, que es el motivo por el
+      // que la ventana salia en blanco. La pagina pausa su reproductor para que
+      // no suenen dos audios, y se oculta para que solo se vea el video nativo.
+      webView?.evaluateJavascript("window.NouTube?.pause?.()", null)
+      if (NouPipPlayer.start(activity)) {
+        webView?.visibility = View.INVISIBLE
+        Log.i(TAG, "PiP con reproductor nativo")
+        return
+      }
+      // Sin URLs reproducibles (p. ej. cifradas): se mantiene el comportamiento
+      // anterior, con la pagina encogida al video.
+      Log.w(TAG, "PiP sin URLs del stream: se encoge la pagina")
+    } else {
+      val position = NouPipPlayer.stop()
+      webView?.visibility = View.VISIBLE
+      // La posicion vuelve a la pagina: el video nativo es otro reproductor y
+      // sin esto el WebView continuaria donde se pauso al entrar.
+      webView?.evaluateJavascript(
+        "window.NouTube?.resumeFromPictureInPicture?.($position)?.catch?.(console.error)",
+        null,
+      )
+      return
+    }
+
     // No se toca el arbol de vistas aqui: re-maquetar la webview dentro de la
     // ventana flotante dejaba el video en blanco y pausado. La pagina ya se
     // encoge sola al video desde JS (setPictureInPicture).
-    view?.webView?.evaluateJavascript(
+    webView?.evaluateJavascript(
       "window.NouTube?.setPictureInPicture?.($inPictureInPicture)?.catch?.(console.error)",
       null,
     )
