@@ -1,6 +1,8 @@
 import { setInterceptionBlockAds, setInterceptionBlocklist, toggleInterception } from 'main/lib/intercept.js'
 import { openLoginWindow } from 'main/lib/login-window.js'
-import { ensureYtDlp, updateYtDlp } from 'main/lib/ytdlp.js'
+import { ensureYtDlp, supportsJsRuntimes, updateYtDlp } from 'main/lib/ytdlp.js'
+import { ensureFfmpeg, getFfmpegPath, ytDlpEnv, ytDlpRuntimeArgs } from 'main/lib/ffmpeg.js'
+import { existsSync as fileExists } from 'fs'
 import { checkForUpdate, isUpdateSupported, quitAndInstall } from 'main/lib/auto-update.js'
 import { consumePendingDeeplinks } from 'main/lib/deeplink.js'
 import { MAIN_CHANNEL } from './constants.js'
@@ -52,11 +54,17 @@ const interfaces = {
   quitAndInstall,
   listFormats: async (url: string, useCookies = false): Promise<{ title: string; formats: FormatOption[] }> => {
     const binary = await ensureYtDlp()
+    // Sin runtime de JavaScript, YouTube devuelve menos formatos (o ninguno).
+    const runtimeArgs = (await supportsJsRuntimes()) ? ytDlpRuntimeArgs() : []
     return withCookiesArgs(
       useCookies,
       (cookiesArgs) =>
         new Promise<{ title: string; formats: FormatOption[] }>((resolve, reject) => {
-          const proc = spawn(binary, [...ytDlpProxyArgs(), ...cookiesArgs, '--dump-json', '--no-playlist', url])
+          const proc = spawn(
+            binary,
+            [...ytDlpProxyArgs(), ...runtimeArgs, ...cookiesArgs, '--dump-json', '--no-playlist', url],
+            { env: ytDlpEnv() },
+          )
           // Collect raw buffers and decode once, so multi-byte characters split across
           // chunks are not corrupted.
           const stdoutChunks: Buffer[] = []
@@ -117,9 +125,20 @@ const interfaces = {
     // Exact-format-id picks (the full format list) can be VP9/AV1/Opus, which do not always
     // fit in mp4 — let yt-dlp choose the container for those.
     const isCuratedFormat = formatId.startsWith('bestvideo') || formatId.startsWith('bestaudio')
+    // Sin runtime de JavaScript, YouTube devuelve menos formatos (o ninguno).
+    const runtimeArgs = (await supportsJsRuntimes()) ? ytDlpRuntimeArgs() : []
+    // Hace falta para unir video y audio (todo lo que sea más de 360p) y para
+    // MP3. Se descarga una sola vez; la primera descarga espera a que baje.
+    if (process.platform === 'win32' && !fileExists(getFfmpegPath())) {
+      uiClient.downloadProgress({ url, line: 'Preparando FFmpeg (solo la primera vez)…', done: false })
+    }
+    const ffmpegPath = await ensureFfmpeg()
+    const ffmpegArgs = ffmpegPath ? ['--ffmpeg-location', ffmpegPath] : []
     return withCookiesArgs(useCookies, (cookiesArgs) => {
       const args = [
         ...ytDlpProxyArgs(),
+        ...runtimeArgs,
+        ...ffmpegArgs,
         ...cookiesArgs,
         url,
         '-f',
@@ -134,7 +153,7 @@ const interfaces = {
             : []),
       ]
       return new Promise<void>((resolve, reject) => {
-        const proc = spawn(binary, args)
+        const proc = spawn(binary, args, { env: ytDlpEnv() })
         let filePath = ''
         let buffer = ''
         let lastLine = ''

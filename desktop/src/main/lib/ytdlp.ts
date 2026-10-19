@@ -14,7 +14,7 @@ export function getYtDlpPath(): string {
   return join(app.getPath('userData'), name)
 }
 
-async function getLocalVersion(): Promise<string | null> {
+export async function getLocalVersion(): Promise<string | null> {
   const binaryPath = getYtDlpPath()
   if (!existsSync(binaryPath)) return null
 
@@ -100,4 +100,24 @@ export async function ensureYtDlp(): Promise<string> {
 
   console.log(`yt-dlp downloaded to ${binaryPath}`)
   return binaryPath
+}
+
+// `--js-runtimes` y `--remote-components` llegaron en yt-dlp 2025.11.12; un
+// binario más viejo los rechaza y haría fallar TODAS las descargas, así que
+// solo se le pasan a uno que los entienda. Las versiones son fechas
+// (YYYY.MM.DD), así que comparan como texto una vez rellenadas.
+let runtimeSupport: { version: string | null; supported: boolean } | undefined
+
+export async function supportsJsRuntimes(): Promise<boolean> {
+  const version = await getLocalVersion()
+  if (runtimeSupport && runtimeSupport.version === version) return runtimeSupport.supported
+  const pad = (v: string): string =>
+    v
+      .split('.')
+      .slice(0, 3)
+      .map((part) => part.padStart(4, '0'))
+      .join('.')
+  const supported = Boolean(version) && pad(version!) >= pad('2025.11.12')
+  runtimeSupport = { version, supported }
+  return supported
 }
