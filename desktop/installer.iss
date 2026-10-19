@@ -28,19 +28,22 @@ AppPublisher={#MyAppPublisher}
 AppPublisherURL={#MyAppURL}
 AppSupportURL={#MyAppURL}
 AppUpdatesURL={#MyAppURL}/releases
-; {autopf} con PrivilegesRequired=lowest es %LOCALAPPDATA%\Programs, la misma
-; carpeta donde instalaba el NSIS anterior: actualiza en el sitio, sin mover nada.
+; {autopf} con PrivilegesRequired=admin es %ProgramFiles%, y los accesos directos
+; van a los del sistema. La instalación por usuario (PrivilegesRequired=lowest)
+; falla en este equipo: al crear el .lnk del Escritorio y la clave HKCU de
+; desinstalación Windows responde "Access is denied" (0x80070005 / RegCreateKeyEx
+; código 5), incluso cuando el usuario es administrador.
 DefaultDirName={autopf}\{#MyAppName}
 DefaultGroupName={#MyAppName}
 DisableProgramGroupPage=yes
 OutputDir=dist
-OutputBaseFilename=VideoTotal-{#MyAppVersion}-setup-inno
+OutputBaseFilename=VideoTotal-{#MyAppVersion}-setup
 SetupIconFile=build\icon.ico
 UninstallDisplayIcon={app}\{#MyAppExeName}
 Compression=lzma2/max
 SolidCompression=yes
 WizardStyle=modern
-PrivilegesRequired=lowest
+PrivilegesRequired=admin
 ArchitecturesAllowed=x64compatible
 ArchitecturesInstallIn64BitMode=x64compatible
 CloseApplications=yes
@@ -64,7 +67,7 @@ Source: "dist\win-unpacked\resources\app-update.yml"; DestDir: "{app}\resources"
 [Icons]
 Name: "{group}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"
 Name: "{group}\Desinstalar {#MyAppName}"; Filename: "{uninstallexe}"
-Name: "{autodesktop}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; Tasks: desktopicon
+Name: "{commondesktop}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; Tasks: desktopicon
 
 [Run]
 Filename: "{app}\{#MyAppExeName}"; Description: "Abrir {#MyAppName} ahora"; Flags: nowait postinstall skipifsilent
