@@ -82,51 +82,6 @@ export async function setPictureInPicture(active: boolean) {
 const bridgeToken = () => window.NouTubeToken || ''
 const SETTINGS_KEY = 'nou:settings'
 let reported = ''
-let reportedPosition = -1
-
-/**
- * URLs directas del stream que se esta reproduciendo.
- *
- * La ventana flotante las necesita porque el WebView de Android no dibuja su
- * superficie de video dentro del PiP: el video lo pone un reproductor nativo
- * (NouPipPlayer). Se leen de la respuesta del propio reproductor de YouTube, que
- * ya viene descifrada y autorizada por la sesion del usuario, asi que no hay que
- * extraer nada ni esperar.
- *
- * Se prefiere el formato progresivo (video y audio en un solo archivo, hasta
- * 720p) y, si no hay, se entregan video y audio adaptativos por separado para
- * que el lado nativo los mezcle.
- */
-function playerStreams(): { videoUrl: string; audioUrl?: string } | null {
-  try {
-    const player = document.querySelector('#movie_player') as
-      | (Element & { getPlayerResponse?: () => unknown })
-      | null
-    const response = (player?.getPlayerResponse?.() ?? (window as { ytInitialPlayerResponse?: unknown }).ytInitialPlayerResponse) as
-      | { streamingData?: { formats?: unknown[]; adaptiveFormats?: unknown[] } }
-      | undefined
-    const data = response?.streamingData
-    if (!data) return null
-
-    type Format = { url?: string; mimeType?: string; height?: number; bitrate?: number; audioQuality?: string }
-    const progressive = ((data.formats || []) as Format[])
-      .filter((f) => !!f.url && String(f.mimeType).startsWith('video/mp4') && !!f.audioQuality)
-      .sort((a, b) => (b.height || 0) - (a.height || 0))[0]
-    if (progressive?.url) return { videoUrl: progressive.url }
-
-    const adaptive = ((data.adaptiveFormats || []) as Format[]).filter((f) => !!f.url)
-    const video = adaptive
-      .filter((f) => String(f.mimeType).startsWith('video/mp4'))
-      .sort((a, b) => (b.height || 0) - (a.height || 0))[0]
-    const audio = adaptive
-      .filter((f) => String(f.mimeType).startsWith('audio/'))
-      .sort((a, b) => (b.bitrate || 0) - (a.bitrate || 0))[0]
-    if (!video?.url || !audio?.url) return null
-    return { videoUrl: video.url, audioUrl: audio.url }
-  } catch {
-    return null
-  }
-}
 
 // Picture-in-Picture is an opt-in setting; reporting no video is what keeps the
 // native side disarmed (see NouPictureInPicture.setVideo), so the switch lives
@@ -162,67 +117,12 @@ function reportPictureInPictureVideo() {
     !video.ended &&
     video.videoWidth > 0
   const size = showable ? [video.videoWidth, video.videoHeight] : [0, 0]
-  const streams = showable ? playerStreams() : null
-  const position = Math.round((video?.currentTime || 0) * 1000)
-  // La clave incluye la URL del stream: al pasar al siguiente video cambia sin
-  // que cambie el tamano, y el lado nativo tiene que enterarse.
-  const key = `${size.join('x')}|${streams?.videoUrl ? streams.videoUrl.slice(0, 96) : ''}`
+  const key = size.join('x')
   if (key == reported) {
     return
   }
   reported = key
-  reportedPosition = position
   window.NouTubeI?.setPictureInPictureVideo?.(bridgeToken(), size[0], size[1])
-  window.NouTubeI?.setPictureInPictureStream?.(
-    bridgeToken(),
-    streams?.videoUrl || '',
-    streams?.audioUrl || '',
-    position,
-    size[0],
-    size[1],
-  )
-}
-
-// El nativo entra al PiP sin poder preguntar nada, asi que la posicion tiene que
-// estar ya reportada. `timeupdate` dispara cuatro veces por segundo: se manda
-// solo cada 5 s para no cruzar el puente sin necesidad.
-function reportPictureInPicturePosition() {
-  const video = document.querySelector('video')
-  if (!video || video.paused || video.ended || !video.videoWidth) {
-    return
-  }
-  const position = Math.round(video.currentTime * 1000)
-  if (Math.abs(position - reportedPosition) < 5000) {
-    return
-  }
-  reportedPosition = position
-  window.NouTubeI?.setPictureInPictureStream?.(
-    bridgeToken(),
-    '', // sin URL: el lado nativo conserva la que ya tenia
-    '',
-    position,
-    video.videoWidth,
-    video.videoHeight,
-  )
-}
-
-/**
- * Vuelve al WebView desde la ventana flotante, en la posicion que alcanzo el
- * reproductor nativo.
- */
-export async function resumeFromPictureInPicture(positionMs: number) {
-  const video = document.querySelector('video')
-  if (!video) {
-    return
-  }
-  if (Number.isFinite(positionMs) && positionMs > 0) {
-    video.currentTime = positionMs / 1000
-  }
-  try {
-    await video.play()
-  } catch {
-    /* el navegador puede exigir un gesto; YouTube reanuda solo al volver */
-  }
 }
 
 export function watchPictureInPictureVideo() {
@@ -235,7 +135,6 @@ export function watchPictureInPictureVideo() {
   for (const type of ['play', 'playing', 'pause', 'ended', 'emptied', 'loadedmetadata', 'resize']) {
     document.addEventListener(type, reportPictureInPictureVideo, true)
   }
-  document.addEventListener('timeupdate', reportPictureInPicturePosition, true)
   for (const type of ['yt-navigate-finish', 'fullscreenchange', 'popstate', 'noutube:settings']) {
     window.addEventListener(type, reportPictureInPictureVideo)
   }

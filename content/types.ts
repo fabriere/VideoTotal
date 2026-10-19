@@ -13,18 +13,6 @@ interface NouTubeI {
   setVolumeIndex?: (token: string, index: number) => void
   canAutoResume?: (token: string) => boolean
   setPictureInPictureVideo?: (token: string, width: number, height: number) => void
-  /**
-   * URLs del stream para el reproductor nativo de la ventana flotante. Una
-   * `videoUrl` vacia significa "solo estoy reportando la posicion".
-   */
-  setPictureInPictureStream?: (
-    token: string,
-    videoUrl: string,
-    audioUrl: string,
-    positionMs: number,
-    width: number,
-    height: number,
-  ) => void
 }
 
 declare global {

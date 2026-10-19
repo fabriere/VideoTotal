@@ -174,37 +174,37 @@ archivos.
 
 ---
 
-## 11. Ventana flotante (PiP): el WebView no sirve, un reproductor nativo sí
+## 11. Ventana flotante (PiP): estaba desactivada, y el WebView sí sirve
 
-Probado y descartado con WebView (2026-10-18). La ventana **se abre**, pero dentro
-**no se ve el video**: el WebView de Android no dibuja su superficie dentro de una
-ventana flotante (sale blanco y el video se pausa). Por eso se quitó en 0.7.15.
+Historia completa, porque costó dos vueltas:
 
-Intentos que **no** funcionaron:
-- Entrar a mano en onUserLeaveHint (Android 12+).
-- Configurar PiP con 16:9 aunque la pagina no reporte el video.
-- Quitar la re-maquetacion nativa de la webview al entrar (0.7.14).
+- **0.7.14-0.7.15 (18/10)**: se probó el PiP y la ventana abría **en blanco**; se
+  quitó la función y se dejó el código nativo dormido (`NouPictureInPicture.kt`
+  seguía en el repo, pero el plugin que lo activa no se aplicaba).
+- **0.7.18 (19/10)**: el problema real era que `withPictureInPicture` **nunca se
+  llamaba** en la cadena de `plugins/withAndroidPlugin.ts`, así que el manifiesto
+  no declaraba `supportsPictureInPicture` y al salir de la app solo seguía el
+  audio. Se reactivó junto con los `configChanges`
+  (`screenSize|smallestScreenSize|screenLayout|orientation`, sin los que el
+  sistema recrea la actividad al entrar y salir).
+- **Probado en HONOR Magic6 Lite (Android 15, WebView al día)**: la ventana
+  flotante **muestra video** con el WebView encogido por CSS. El fallo del
+  "cuadro blanco" no se reproduce aquí, porque el motor WebView actual sí compone
+  la superficie de video dentro del PiP.
 
-**Solución (0.7.18):** el video del PiP lo pone un reproductor nativo
-(`NouPipPlayer.kt`, ExoPlayer/media3) que sí se dibuja en la ventana flotante. El
-WebView solo aporta las URLs del stream, que se leen de `streamingData` en la
-respuesta del propio reproductor de YouTube (`content/picture-in-picture.ts`) —
-ya descifradas y autorizadas por la sesión, sin extraer nada ni esperar.
+**Se descartó el reproductor nativo** (ExoPlayer/media3) que se llegó a
+implementar: la página no puede entregar URLs reproducibles porque YouTube las
+devuelve como `signatureCipher` (cifradas) en `getPlayerResponse()`, y los
+`blob:` del `<video>` no sirven fuera del WebView. Y no hace falta: la captura
+del PiP mostró el video correctamente. Queda el camino anterior (la página se
+encoge al video), que es el que funciona.
 
-Puntos que hubo que resolver:
-- **403 del CDN**: las URLs de googlevideo están atadas al cliente; el
-  `DefaultHttpDataSource` necesita un User-Agent de navegador.
-- **Video sin audio**: los formatos "adaptativos" vienen separados; se usa
-  `MergingMediaSource(video, audio)`. Si existe el progresivo (≤720p), mejor: una
-  sola fuente.
-- **Posición**: el nativo entra al PiP sin poder preguntar (la actividad ya está
-  pausada), así que la página reporta la posición cada 5 s y, al salir, el nativo
-  devuelve la suya para que el WebView continúe ahí.
-- **Dos audios**: al entrar al PiP la página pausa su reproductor.
-- **configChanges**: sin `screenSize|smallestScreenSize|screenLayout|orientation`
-  el sistema recrea la actividad al entrar/salir y el reproductor se destruye.
+**Para que el usuario lo encuentre**: el interruptor está en
+*Preferencias de YouTube → REPRODUCCIÓN → Pantalla en pantalla* (no en
+*Preferencias*, que es la pantalla de VideoTotal y solo tiene GENERAL y PROXY).
+Viene **apagado** por defecto (`settings.pictureInPicture`).
 
 Pista de diagnostico: si la ventana abre pero esta en blanco, mirar
 pictureInPictureParams en el log del sistema; si es null, la actividad no tiene
-configurado el PiP, y si esta configurado y sigue blanco, es la superficie del
-WebView (por eso el reproductor nativo).
+configurado el PiP. Con el PiP activo, `dumpsys activity activities` muestra
+`mode=pinned` y `mLastReportedPictureInPictureMode=true`.

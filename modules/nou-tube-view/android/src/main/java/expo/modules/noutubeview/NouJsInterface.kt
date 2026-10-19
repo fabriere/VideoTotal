@@ -72,25 +72,6 @@ class NouJsInterface(private val context: Context, private val view: NouTubeView
     view.setPictureInPictureVideo(width, height)
   }
 
-  /**
-   * URLs del stream que la pagina esta reproduciendo, para que la ventana
-   * flotante muestre video real con un reproductor nativo (NouPipPlayer).
-   */
-  @JavascriptInterface
-  fun setPictureInPictureStream(
-    token: String?,
-    videoUrl: String?,
-    audioUrl: String?,
-    positionMs: Long,
-    width: Int,
-    height: Int,
-  ) {
-    if (!view.isBridgeTokenValid(token)) {
-      return
-    }
-    view.setPictureInPictureStream(videoUrl, audioUrl, positionMs, width, height)
-  }
-
   // Completes an awaited eval (see NouTubeView.evalAwait). Token-gated like the setters above:
   // without it any frame could answer — or hijack — a pending eval.
   @JavascriptInterface

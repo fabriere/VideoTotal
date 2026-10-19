@@ -207,10 +207,10 @@ const withPictureInPicture: ConfigPlugin = (config) => {
 }
 
 const withAndroidSigningConfig: ConfigPlugin = (config) => {
-  // La ventana flotante vuelve a estar activa (0.7.18): el motivo por el que se
-  // quito era que el WebView no dibuja su superficie dentro del PiP y la ventana
-  // salia en blanco. Ahora el video lo pone un reproductor nativo (NouPipPlayer)
-  // con las URLs que entrega la propia pagina; el WebView solo las aporta.
+  // La ventana flotante se quito en 0.7.15 porque la ventana abria en blanco.
+  // Vuelve a estar activa desde 0.7.18: en el HONOR Magic6 Lite (Android 15,
+  // WebView al dia) el WebView si dibuja el video dentro del PiP, asi que el
+  // fallo original no se reproduce. Ver docs/LECCIONES.md §11.
   config = withPictureInPicture(config)
   config = withSecondaryDisplayMetricsFix(config)
   config = withDeepLinkIntentFix(config)
