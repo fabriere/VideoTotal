@@ -1,6 +1,6 @@
 {
   "gate": {
-    "intro": "Escribe el código que te hayan dado para usar la aplicación.",
+    "intro": "Escribe el código que te proporcionaron para acceder y utilizar esta aplicación",
     "expired": "Tu licencia ha caducado. Escribe un código nuevo para seguir usando la aplicación.",
     "codeLabel": "Código de licencia",
     "activate": "Activar",
