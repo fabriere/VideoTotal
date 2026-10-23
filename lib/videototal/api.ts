@@ -10,7 +10,7 @@
  */
 
 import { API_BASE_FROM_ENV } from './api-base'
-import { hydrateStorage, readStore, writeStore } from './storage'
+import { hydrateStorage, isStorageHydrated, readStore, writeStore } from './storage'
 
 // La base la aporta un fichero u otro según el empaquetador: Vite en web y
 // escritorio (VITE_*), Metro en Android e iOS (EXPO_PUBLIC_*). Ver ./api-base.ts
@@ -420,6 +420,13 @@ export const authApi = {
    * el token ya no vale (401), se limpia solo.
    */
   async restore(): Promise<void> {
+    // Si el almacenamiento no se ha podido leer todavía, no se puede concluir
+    // "no hay sesión": se saldría a la pantalla de licencia con una licencia
+    // guardada. Se deja el estado en carga y `ensureSessionRestored` reintenta.
+    if (!isStorageHydrated()) {
+      return
+    }
+
     const token = readStore(TOKEN_KEY)
     if (!token) {
       currentSession = null
@@ -441,8 +448,13 @@ export const authApi = {
       if (e instanceof ApiError && e.status === 401) {
         // Token revocado: se limpia y se vuelve a la pantalla de licencia.
         clearSession('SIGNED_OUT')
+      } else if (!saved) {
+        // Hay token pero no plan guardado y el servidor no responde: sin datos
+        // no se puede dejar la pantalla en "cargando" para siempre.
+        currentSession = null
+        emit('INITIAL_SESSION')
       }
-      // Sin red (0) u otro error: se conserva lo guardado y se reintentará.
+      // Sin red (0) u otro error con plan guardado: se conserva lo guardado.
     }
   },
 }
@@ -454,5 +466,18 @@ export function ensureSessionRestored(): void {
   restoreStarted = true
   // En móvil hay que volcar AsyncStorage en memoria ANTES de leer el token:
   // si no, la sesión se perdería en cada arranque.
-  void hydrateStorage().then(() => authApi.restore())
+  void (async () => {
+    try {
+      await hydrateStorage()
+    } catch {
+      // No se pudo leer el almacenamiento (memoria justa, SQLite bloqueado).
+      // NO se puede decidir que no hay licencia: se reintenta en un momento y
+      // mientras tanto el estado sigue en "cargando", no en la pantalla de
+      // activación. Así no se le pide el código a quien ya lo activó.
+      restoreStarted = false
+      setTimeout(ensureSessionRestored, 800)
+      return
+    }
+    await authApi.restore()
+  })()
 }

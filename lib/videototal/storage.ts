@@ -33,3 +33,8 @@ export function writeStore(key: string, value: string): void {
 export async function hydrateStorage(): Promise<void> {
   // Intencionadamente vacío.
 }
+
+/** En web el almacenamiento está disponible desde el primer instante. */
+export function isStorageHydrated(): boolean {
+  return true
+}
