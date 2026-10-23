@@ -14,6 +14,19 @@
     "haveCode": "I have a licence code",
     "activatedNoPlan": "The licence was activated but could not be read. Close the app and open it again."
   },
+  "updates": {
+    "section": "UPDATES",
+    "check": "Check for update",
+    "current": "Installed version: {{version}}",
+    "latest": "You already have the latest version ({{version}}).",
+    "availableTitle": "A new version is available",
+    "availableBody": "Version {{version}} ({{mb}} MB). It downloads and opens the installer: your licence and data are kept.",
+    "download": "Download and install",
+    "later": "Not now",
+    "downloading": "Downloading… {{pct}}%",
+    "installing": "Opening the installer…",
+    "error": "Could not check for updates. Check your connection."
+  },
   "about": {
     "sourceCode": "Source code",
     "license": "Licence",

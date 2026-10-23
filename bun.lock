@@ -30,6 +30,7 @@
         "expo-file-system": "~56.0.7",
         "expo-font": "~56.0.5",
         "expo-image": "~56.0.9",
+        "expo-intent-launcher": "~56.0.4",
         "expo-linking": "~56.0.12",
         "expo-localization": "~56.0.6",
         "expo-notifications": "~56.0.26",
@@ -76,7 +77,7 @@
     },
     "desktop": {
       "name": "noutube-desktop",
-      "version": "0.3.11",
+      "version": "0.3.12",
       "dependencies": {
         "@electron-toolkit/preload": "^3.0.2",
         "@electron-toolkit/utils": "^4.0.0",
@@ -1434,6 +1435,8 @@
     "expo-glass-effect": ["expo-glass-effect@56.0.4", "", { "peerDependencies": { "expo": "*", "react": "*", "react-native": "*" } }, "sha512-xI9rXtDwi7RW82uAlfyaXO6+k21ApWJ2tHAWYqPr/FjfmZbKsgNJ4Q0iZzGPCwboqjTGxaRZ61SZxBl8hDt5iA=="],
 
     "expo-image": ["expo-image@56.0.9", "", { "dependencies": { "sf-symbols-typescript": "^2.2.0" }, "peerDependencies": { "expo": "*", "react": "*", "react-native": "*", "react-native-web": "*" }, "optionalPeers": ["react-native-web"] }, "sha512-FifiRehXnMul5XeUVHWv+COHFUeCAdsYf5MiCPUBlhr4pRb0sxjA4/floi/TEDpATOIw6GqxbrC4FdZBoyrJmw=="],
+
+    "expo-intent-launcher": ["expo-intent-launcher@56.0.4", "", { "peerDependencies": { "expo": "*" } }, "sha512-ZqRMuPunNSucK9kRbtX+I8bD/OhY0moGNnHKHCWx//1BZ+HyKBCVw6OX12gWHjowz1AhcSVeAasYt48Y+tXPwQ=="],
 
     "expo-json-utils": ["expo-json-utils@57.0.2", "", {}, "sha512-9kYZECLKE3pYZQs+kt3+ggY83Lfryog9/UEo3HJKGcHUZeKKtlFBIPFjI4LzREubsvjP7AsvG0FdEX9EquIoAQ=="],
 

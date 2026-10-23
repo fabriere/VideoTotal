@@ -7,8 +7,8 @@
     "private": true,
     "license": "AGPL-3.0",
     "main": "index.js",
-    "version": "0.7.22",
-    "versionCode": 101,
+    "version": "0.7.23",
+    "versionCode": 102,
     "buildNumber": "5",
     "scripts": {
         "eas-build-pre-install": "bun link",
@@ -48,6 +48,7 @@
         "expo-file-system": "~56.0.7",
         "expo-font": "~56.0.5",
         "expo-image": "~56.0.9",
+        "expo-intent-launcher": "~56.0.4",
         "expo-linking": "~56.0.12",
         "expo-localization": "~56.0.6",
         "expo-notifications": "~56.0.26",

@@ -1,4 +1,4 @@
-import { ActivityIndicator, Platform, Pressable, Switch, TextInput, View, useColorScheme } from 'react-native'
+import { ActivityIndicator, Alert, Platform, Pressable, Switch, TextInput, View, useColorScheme } from 'react-native'
 import { useEffect, useRef, useState } from 'react'
 import { useLocales } from 'expo-localization'
 import { clsx, isAndroid, isIos, isWeb, nIf } from '@/lib/utils'
@@ -32,6 +32,12 @@ import {
   toBcp47Locale,
 } from '@/lib/i18n'
 import { getTranslationSupportedLanguages } from '@/lib/translation'
+import {
+  type AvailableUpdate,
+  checkForUpdate,
+  currentVersion,
+  downloadAndInstall,
+} from '@/lib/videototal/updates'
 import {
   builtinUserStyleDefinitionById,
   type BuiltinUserStyleId,
@@ -335,6 +341,80 @@ const clickbaitLabel = (value: (typeof clickbaitOptions)[number]) => {
 
 // NouTube's own behavior. Anything that changes the YouTube page itself belongs on the YouTube
 // side of the settings index instead (see SettingsYouTubeContent).
+/**
+ * Buscar e instalar una versión nueva del APK sin salir de la app.
+ *
+ * Solo Android: en escritorio la actualización la maneja el auto-updater de
+ * Electron. El APK se descarga a la caché y se abre el instalador del sistema;
+ * Android siempre pide confirmar, eso no se puede saltar.
+ */
+const SettingsUpdateSection = () => {
+  const [buscando, setBuscando] = useState(false)
+  const [descargando, setDescargando] = useState(false)
+
+  const descargar = async (update: AvailableUpdate) => {
+    setDescargando(true)
+    let ultimoAviso = -25
+    try {
+      await downloadAndInstall(update, (fraction) => {
+        const pct = Math.floor(fraction * 100)
+        if (pct >= ultimoAviso + 25 && pct < 100) {
+          ultimoAviso = pct
+          showToast(t('updates.downloading', { pct }))
+        }
+      })
+      showToast(t('updates.installing'))
+    } catch {
+      showToast(t('updates.error'))
+    } finally {
+      setDescargando(false)
+    }
+  }
+
+  const buscar = async () => {
+    setBuscando(true)
+    try {
+      const update = await checkForUpdate()
+      if (!update) {
+        showToast(t('updates.latest', { version: currentVersion() }))
+        return
+      }
+      Alert.alert(
+        t('updates.availableTitle'),
+        t('updates.availableBody', {
+          version: update.version,
+          mb: Math.max(1, Math.round(update.sizeBytes / 1048576)),
+        }),
+        [
+          { text: t('updates.later'), style: 'cancel' },
+          { text: t('updates.download'), onPress: () => void descargar(update) },
+        ],
+      )
+    } catch {
+      showToast(t('updates.error'))
+    } finally {
+      setBuscando(false)
+    }
+  }
+
+  return (
+    <View className="mt-8">
+      <SettingsSection label={t('updates.section')}>
+        <View className={surfaceCls}>
+          <SettingsActionRow
+            label={t('updates.check')}
+            description={t('updates.current', { version: currentVersion() })}
+            icon="system-update"
+            onPress={() => void buscar()}
+            loading={buscando || descargando}
+            isLast
+          />
+        </View>
+      </SettingsSection>
+    </View>
+  )
+}
+
 export const SettingsPreferencesContent = () => {
   const tw = useTwColor()
   const settings = useValue(settings$)
@@ -448,6 +528,8 @@ export const SettingsPreferencesContent = () => {
           </SettingsSection>
         </View>
       ) : null}
+
+      {isAndroid ? <SettingsUpdateSection /> : null}
 
     </View>
   )

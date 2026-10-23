@@ -57,7 +57,16 @@ module.exports = ({ config }: { config: ExpoConfig }) => {
     },
     android: {
       versionCode,
-      permissions: ['RECORD_AUDIO', 'MODIFY_AUDIO_SETTINGS', 'POST_NOTIFICATIONS', 'WAKE_LOCK'],
+      permissions: [
+        'RECORD_AUDIO',
+        'MODIFY_AUDIO_SETTINGS',
+        'POST_NOTIFICATIONS',
+        'WAKE_LOCK',
+        // Necesario para que la app pueda abrir el instalador de Android cuando
+        // hay una version nueva (ver lib/videototal/updates.ts). Android sigue
+        // pidiendo que el usuario confirme la instalacion.
+        'REQUEST_INSTALL_PACKAGES',
+      ],
       adaptiveIcon: {
         // La capa frontal es el dibujo recortado, sin el marco blanco que traia
         // el original, reducido para que el capibara quede en la zona que

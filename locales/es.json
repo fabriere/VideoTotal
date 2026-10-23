@@ -14,6 +14,19 @@
     "haveCode": "Tengo un código de licencia",
     "activatedNoPlan": "La licencia se activó, pero no se pudo leer. Cierra la aplicación y vuelve a abrirla."
   },
+  "updates": {
+    "section": "ACTUALIZACIONES",
+    "check": "Buscar actualización",
+    "current": "Versión instalada: {{version}}",
+    "latest": "Ya tienes la última versión ({{version}}).",
+    "availableTitle": "Hay una versión nueva",
+    "availableBody": "Versión {{version}} ({{mb}} MB). Se descarga y se abre el instalador: no pierdes tu licencia ni tus datos.",
+    "download": "Descargar e instalar",
+    "later": "Ahora no",
+    "downloading": "Descargando… {{pct}}%",
+    "installing": "Abriendo el instalador…",
+    "error": "No se pudo comprobar la actualización. Revisa tu conexión."
+  },
   "about": {
     "sourceCode": "Código fuente",
     "license": "Licencia",
