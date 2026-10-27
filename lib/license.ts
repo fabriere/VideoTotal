@@ -47,6 +47,23 @@ export function licenseState(loaded: boolean, plan?: string, expiresAt?: string)
   return isLicenseActive(plan, expiresAt) ? 'active' : 'expired'
 }
 
+/**
+ * ¿Lo que dice el servidor puede pisar la licencia guardada en el teléfono?
+ *
+ * Solo cuando la respuesta viene de NUESTRA API (`source: 'videototal'`). La
+ * consulta devuelve `source: 'none'` cuando todavía no hay token o cuando la
+ * sesión no vale; en esos casos NO se toca nada: la licencia guardada manda.
+ *
+ * Sin esta distinción, un `/me` lento o fallido borraba el plan restaurado del
+ * disco y un cliente con licencia veía la pantalla de activación al reabrir la
+ * app, sin forma de pasar de ahí.
+ */
+export function serverEntitlementIsAuthoritative(
+  me?: { source?: string } | null,
+): boolean {
+  return me?.source === 'videototal'
+}
+
 /** Días que quedan, redondeando hacia arriba. undefined si es perpetua. */
 export function daysLeft(expiresAt?: string): number | undefined {
   if (!expiresAt) {

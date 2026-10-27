@@ -12,6 +12,7 @@ import { AppState, StyleSheet, View } from 'react-native'
 import { setPageUrl } from '@/lib/page'
 import { getNextQueueUrl, trackQueueEnded, trackQueuePlaying } from '@/lib/queue'
 import { getLastPlaying } from '@/lib/last-playing'
+import { serverEntitlementIsAuthoritative } from '@/lib/license'
 import { normalizeUrl } from '@/lib/url'
 import { showToast } from '@/lib/toast'
 import { clsx, isAndroid, isIos, isWeb, nIf } from '@/lib/utils'
@@ -601,8 +602,17 @@ export const MainPageContent: React.FC<{ contentJs: string }> = ({ contentJs }) 
   }, [])
 
   useEffect(() => {
-    auth$.plan.set(me?.plan)
-    auth$.planExpiresAt.set(me?.expiresAt ?? undefined)
+    // Solo se aplica lo que confirma el SERVIDOR. Si `/me` todavía no respondió
+    // (o falló, o no hay sesión), se respeta la licencia guardada en el teléfono.
+    //
+    // Antes esto era `auth$.plan.set(me?.plan)` sin condición: al abrir la app,
+    // `me` aún no existía y borraba el plan restaurado del disco, así que el
+    // cliente con licencia veía la pantalla de activación y quedaba atrapado ahí
+    // si la consulta tardaba o no había buena conexión.
+    if (serverEntitlementIsAuthoritative(me)) {
+      auth$.plan.set(me?.plan)
+      auth$.planExpiresAt.set(me?.expiresAt ?? undefined)
+    }
     const runSync = () => {
       void syncSupabase().catch((error) => {
         logger.error('syncSupabase failed', error)
