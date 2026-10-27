@@ -12,7 +12,13 @@
     "enter": "Sign in",
     "haveAccount": "Already have an account? Sign in",
     "haveCode": "I have a licence code",
-    "activatedNoPlan": "The licence was activated but could not be read. Close the app and open it again."
+    "activatedNoPlan": "The licence was activated but could not be read. Close the app and open it again.",
+    "updateCheck": "Check for updates",
+    "updateChecking": "Checking for updates…",
+    "updateLatest": "You already have the latest version ({{version}})",
+    "updateAvailable": "New version {{version}} ({{size}} MB) is available. Downloading…",
+    "updateDownloading": "Downloading {{version}}… {{pct}}%",
+    "updateError": "Could not check for updates. Check your internet connection."
   },
   "updates": {
     "section": "UPDATES",

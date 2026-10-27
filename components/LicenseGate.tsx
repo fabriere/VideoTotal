@@ -23,9 +23,18 @@ import { NouText } from './NouText'
 import { WHATSAPP_URL } from '@/lib/help'
 import { licenseState } from '@/lib/license'
 import { activateLicense, signIn } from '@/lib/supabase/auth'
+import { availableState, gateUpdateLabel, progressPercent, sizeInMB, type GateUpdateState, type GateUpdateTone } from '@/lib/videototal/gate-update'
+import { checkForUpdate, currentVersion, downloadAndInstall } from '@/lib/videototal/updates'
 import { auth$ } from '@/states/auth'
 
 const PLACEHOLDER_COLOR = '#a1a1aa'
+
+/** Color del aviso del actualizador, junto al botón. */
+const tonoCls: Record<GateUpdateTone, string> = {
+  ok: 'text-emerald-600 dark:text-emerald-400',
+  info: 'text-zinc-500',
+  warn: 'text-red-500',
+}
 
 const mensajeDeError = (e: unknown): string => {
   if (e instanceof Error && e.message) {
@@ -46,8 +55,45 @@ export const LicenseGate: React.FC = () => {
   const [password, setPassword] = useState('')
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string>()
+  const [updateState, setUpdateState] = useState<GateUpdateState>({ kind: 'idle' })
+  const [updating, setUpdating] = useState(false)
 
   const estado = licenseState(loaded, plan, planExpiresAt)
+
+  /**
+   * Traer la versión nueva sin salir de esta pantalla.
+   *
+   * Un cliente atascado aquí no puede llegar a Ajustes, así que no puede usar el
+   * actualizador de dentro: esta es su única salida sola.
+   */
+  const buscarActualizacion = async () => {
+    if (updating) return
+    setUpdating(true)
+    setUpdateState({ kind: 'checking' })
+    try {
+      const encontrada = await checkForUpdate()
+      if (!encontrada) {
+        setUpdateState({ kind: 'latest', version: currentVersion() })
+        return
+      }
+      setUpdateState(availableState(encontrada))
+      await downloadAndInstall(encontrada, (fraccion) => {
+        setUpdateState({
+          kind: 'downloading',
+          version: encontrada.version,
+          sizeMB: sizeInMB(encontrada.sizeBytes),
+          percent: progressPercent(fraccion),
+        })
+      })
+      // El instalador de Android ya está abierto; si el cliente lo cierra sin
+      // instalar, el APK sigue en la caché y este botón lo reabre sin bajar nada.
+      setUpdateState(availableState(encontrada))
+    } catch {
+      setUpdateState({ kind: 'error' })
+    } finally {
+      setUpdating(false)
+    }
+  }
 
   const entrar = async () => {
     if (modo === 'code' && code.trim().length === 0) {
@@ -214,6 +260,36 @@ export const LicenseGate: React.FC = () => {
       <Pressable onPress={() => void Linking.openURL(WHATSAPP_URL)} className="mt-6 items-center">
         <NouText className="text-sm text-[#dc070c] underline">{t('gate.noCode')}</NouText>
       </Pressable>
+
+      {/* Actualizador dentro de la propia pantalla de licencia: si esta versión
+          es la que no deja entrar, el cliente puede traerse la nueva sin
+          depender de que le manden el APK. Solo Android. */}
+      {Platform.OS === 'android' ? (
+        <View className="mb-8 mt-6 items-center">
+          <Pressable
+            disabled={updating}
+            onPress={() => void buscarActualizacion()}
+            className="h-10 items-center justify-center rounded-xl border border-zinc-300 px-5 dark:border-zinc-700"
+          >
+            {updating ? (
+              <ActivityIndicator />
+            ) : (
+              <NouText className="text-sm font-semibold text-zinc-700 dark:text-zinc-200">
+                {t('gate.updateCheck')}
+              </NouText>
+            )}
+          </Pressable>
+          {(() => {
+            const etiqueta = gateUpdateLabel(updateState)
+            if (!etiqueta) return null
+            return (
+              <NouText className={`mt-2 text-center text-xs leading-5 ${tonoCls[etiqueta.tone]}`}>
+                {t(etiqueta.key, etiqueta.params)}
+              </NouText>
+            )
+          })()}
+        </View>
+      ) : null}
       </ScrollView>
     </KeyboardAvoidingView>
   )

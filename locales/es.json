@@ -12,7 +12,13 @@
     "enter": "Entrar",
     "haveAccount": "¿Ya tienes cuenta? Entrar con correo",
     "haveCode": "Tengo un código de licencia",
-    "activatedNoPlan": "La licencia se activó, pero no se pudo leer. Cierra la aplicación y vuelve a abrirla."
+    "activatedNoPlan": "La licencia se activó, pero no se pudo leer. Cierra la aplicación y vuelve a abrirla.",
+    "updateCheck": "Buscar actualización",
+    "updateChecking": "Buscando actualización…",
+    "updateLatest": "Ya tienes la última versión ({{version}})",
+    "updateAvailable": "Hay una versión nueva {{version}} ({{size}} MB). Descargando…",
+    "updateDownloading": "Descargando {{version}}… {{pct}}%",
+    "updateError": "No se pudo comprobar la actualización. Revisa la conexión a internet."
   },
   "updates": {
     "section": "ACTUALIZACIONES",
